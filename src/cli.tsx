@@ -15,6 +15,7 @@ import {
   executeResumeCommand,
   executeConfigCommand,
   executeSetupCommand,
+  executeLogsCommand,
 } from './commands/index.js';
 
 /**
@@ -31,6 +32,7 @@ Commands:
   run [options]       Start Ralph execution
   resume [options]    Resume an interrupted session
   status              Check session status
+  logs [options]      View/manage iteration output logs
   setup [options]     Run interactive project setup
   config show         Display merged configuration
   plugins agents      List available agent plugins
@@ -60,6 +62,10 @@ Examples:
   ralph-tui run --prd ./prd.json         # Run with PRD file
   ralph-tui resume                       # Resume interrupted session
   ralph-tui status                       # Check session status
+  ralph-tui logs                         # List iteration logs
+  ralph-tui logs --iteration 5           # View specific iteration
+  ralph-tui logs --task US-005           # View logs for a task
+  ralph-tui logs --clean --keep 10       # Clean up old logs
   ralph-tui plugins agents               # List agent plugins
   ralph-tui plugins trackers             # List tracker plugins
 `);
@@ -93,6 +99,12 @@ async function handleSubcommand(args: string[]): Promise<boolean> {
   // Status command
   if (command === 'status') {
     await executeStatusCommand(args.slice(1));
+    return true;
+  }
+
+  // Logs command
+  if (command === 'logs') {
+    await executeLogsCommand(args.slice(1));
     return true;
   }
 

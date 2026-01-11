@@ -318,6 +318,9 @@ export interface EngineState {
   /** Start time (ISO 8601) */
   startedAt: string | null;
 
-  /** Current iteration output buffer */
+  /** Current iteration stdout buffer */
   currentOutput: string;
+
+  /** Current iteration stderr buffer */
+  currentStderr: string;
 }

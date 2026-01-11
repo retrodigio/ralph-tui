@@ -4,8 +4,6 @@
  * Supports configurable error handling strategies: retry, skip, abort.
  */
 
-import { join } from 'node:path';
-import { writeFile, mkdir, access, constants } from 'node:fs/promises';
 import type {
   EngineEvent,
   EngineEventListener,
@@ -22,6 +20,7 @@ import type { AgentPlugin, AgentExecutionHandle } from '../plugins/agents/types.
 import { getAgentRegistry } from '../plugins/agents/registry.js';
 import { getTrackerRegistry } from '../plugins/trackers/registry.js';
 import { updateSessionIteration, updateSessionStatus } from '../session/index.js';
+import { saveIterationLog } from '../logs/index.js';
 
 /**
  * Pattern to detect completion signal in agent output
@@ -90,6 +89,7 @@ export class ExecutionEngine {
       iterations: [],
       startedAt: null,
       currentOutput: '',
+      currentStderr: '',
     };
   }
 
@@ -451,6 +451,7 @@ export class ExecutionEngine {
     this.state.currentIteration++;
     this.state.currentTask = task;
     this.state.currentOutput = '';
+    this.state.currentStderr = '';
 
     const startedAt = new Date();
     const iteration = this.state.currentIteration;
@@ -497,6 +498,7 @@ export class ExecutionEngine {
           });
         },
         onStderr: (data) => {
+          this.state.currentStderr += data;
           this.emit({
             type: 'agent:output',
             timestamp: new Date().toISOString(),
@@ -534,9 +536,6 @@ export class ExecutionEngine {
         });
       }
 
-      // Save iteration output
-      await this.saveIterationOutput(iteration, agentResult.stdout, task);
-
       // Determine iteration status
       let status: IterationStatus;
       if (agentResult.interrupted) {
@@ -558,6 +557,15 @@ export class ExecutionEngine {
         startedAt: startedAt.toISOString(),
         endedAt: endedAt.toISOString(),
       };
+
+      // Save iteration output to .ralph-tui/iterations/ directory
+      await saveIterationLog(
+        this.config.cwd,
+        result,
+        agentResult.stdout,
+        agentResult.stderr ?? this.state.currentStderr,
+        this.config
+      );
 
       this.emit({
         type: 'iteration:completed',
@@ -589,42 +597,6 @@ export class ExecutionEngine {
     } finally {
       this.state.currentTask = null;
     }
-  }
-
-  /**
-   * Save iteration output to file
-   */
-  private async saveIterationOutput(
-    iteration: number,
-    output: string,
-    task: TrackerTask
-  ): Promise<void> {
-    const outputDir = join(this.config.cwd, this.config.outputDir);
-
-    // Ensure output directory exists
-    try {
-      await access(outputDir, constants.F_OK);
-    } catch {
-      await mkdir(outputDir, { recursive: true });
-    }
-
-    const filename = `iteration-${String(iteration).padStart(3, '0')}-${task.id}.md`;
-    const filepath = join(outputDir, filename);
-
-    const content = [
-      `# Iteration ${iteration}: ${task.title}`,
-      '',
-      `**Task ID**: ${task.id}`,
-      `**Timestamp**: ${new Date().toISOString()}`,
-      '',
-      '## Output',
-      '',
-      '```',
-      output,
-      '```',
-    ].join('\n');
-
-    await writeFile(filepath, content);
   }
 
   /**

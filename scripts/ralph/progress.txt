@@ -552,3 +552,68 @@ Started: Sun 11 Jan 10:55:32 GMT 2026
   - Session persistence uses isPaused flag and pausedAt timestamp for resumable state
   - Events (engine:paused, engine:resumed) drive both TUI updates and state persistence
 ---
+
+## 2026-01-11 - ralph-tui-45r.18
+- What was implemented:
+  - US-018: Graceful Interruption with full acceptance criteria
+  - New interruption module (src/interruption/) with types, handler, and index exports
+  - InterruptHandler with double-press detection (1 second window)
+  - ConfirmationDialog TUI component for interrupt confirmation overlay
+  - RunApp integration: showInterruptDialog prop, onInterruptConfirm/Cancel callbacks
+  - RunAppWrapper component manages dialog state and bridges to interrupt handler
+  - Press Ctrl+C shows confirmation: "Interrupt Ralph? [y/N]"
+  - Press y to confirm: stops agent, saves state, exits gracefully with code 0
+  - Press n or Esc to cancel and continue execution
+  - Press Ctrl+C twice quickly to force quit immediately (exit code 1)
+  - In headless mode: first Ctrl+C triggers graceful shutdown with hint about double-press
+  - Session state properly saved before exit (status: 'interrupted')
+  - Agent process properly terminated via engine.dispose()
+  - SIGTERM handled separately (always graceful, no confirmation)
+- Files changed:
+  - src/interruption/types.ts (new) - InterruptState, InterruptHandler, ConfirmationDialogProps types
+  - src/interruption/handler.ts (new) - createInterruptHandler with signal handling
+  - src/interruption/index.ts (new) - Module exports
+  - src/tui/components/ConfirmationDialog.tsx (new) - Modal dialog component
+  - src/tui/components/index.ts (updated) - Export ConfirmationDialog
+  - src/tui/components/RunApp.tsx (updated) - Added interrupt dialog props and keyboard handling
+  - src/commands/run.tsx (updated) - RunAppWrapper, interrupt handler integration, headless mode updates
+- **Learnings:**
+  - OpenTUI uses `border: true` with `borderColor` instead of CSS-style `borderStyle`
+  - OpenTUI text elements use `fg` prop directly, not style objects with textAlign
+  - Modal centering requires nested flex containers, no CSS transforms support
+  - React state for dialogs requires wrapper component when logic is in non-React code
+  - Signal handlers must be properly cleaned up via dispose() to prevent memory leaks
+---
+
+## 2026-01-11 - ralph-tui-45r.20
+- What was implemented:
+  - US-020: Iteration Output Persistence with full acceptance criteria
+  - New logs module (src/logs/) with types, persistence, and index exports
+  - Iteration logs now saved to .ralph-tui/iterations/ directory (new standard location)
+  - Log format: iteration-{N}-{taskId}.log with structured header + raw output
+  - Log header includes: timestamp, task details, duration, status, outcome, agent/model info
+  - Raw output section contains full stdout/stderr separated by dividers
+  - `ralph-tui logs` command to list all iteration logs with summary table
+  - `ralph-tui logs --iteration 5` to view specific iteration in detail
+  - `ralph-tui logs --task US-005` to view all iterations for a task
+  - `ralph-tui logs --clean --keep 10` to clean up old logs
+  - `--dry-run` flag for cleanup preview without deletion
+  - `--verbose` flag for full output display (not truncated)
+  - Engine now tracks stderr separately alongside stdout for persistence
+  - EngineState extended with currentStderr field
+- Files changed:
+  - src/logs/types.ts (new) - Type definitions for iteration logs
+  - src/logs/persistence.ts (new) - Save/load/list/clean functions
+  - src/logs/index.ts (new) - Module exports
+  - src/commands/logs.ts (new) - Logs command implementation
+  - src/commands/index.ts (updated) - Export logs command
+  - src/cli.tsx (updated) - Add logs subcommand handling
+  - src/engine/types.ts (updated) - Added currentStderr to EngineState
+  - src/engine/index.ts (updated) - Use new saveIterationLog, track stderr
+- **Learnings:**
+  - Structured log format with dividers allows machine-parseable headers while preserving raw output
+  - Separating stdout/stderr in logs helps debugging agent issues vs task issues
+  - The old .ralph-output/ directory used minimal markdown; new format is richer with full metadata
+  - Log cleanup should sort by iteration number descending to keep most recent
+  - Partial task ID matching in filter enables fuzzy search (e.g., "US-" matches all user stories)
+---

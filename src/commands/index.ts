@@ -38,3 +38,9 @@ export {
   parseSetupArgs,
   printSetupHelp,
 } from './setup.js';
+
+export {
+  executeLogsCommand,
+  parseLogsArgs,
+  printLogsHelp,
+} from './logs.js';
