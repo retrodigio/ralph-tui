@@ -123,9 +123,11 @@ get_next_bead_in_epic() {
     fi
 
     if [ "$BV_AVAILABLE" = true ]; then
-        # bv --robot-next returns the single best task to work on
+        # bv --robot-triage returns multiple recommendations
         # Filter to children of this epic (IDs starting with EPIC_ID.)
-        bv --robot-next 2>/dev/null | jq --arg EPIC "$EPIC_ID" '
+        # Use triage instead of next because next might return the epic itself
+        bv --robot-triage 2>/dev/null | jq --arg EPIC "$EPIC_ID" '
+            .triage.recommendations[] |
             select(.id | startswith($EPIC + ".")) |
             {
                 id: .id,
@@ -134,7 +136,7 @@ get_next_bead_in_epic() {
                 reasons: (.reasons // []),
                 epic: $EPIC
             }
-        '
+        ' | head -1
     else
         # Fallback: parse bd list output (no JSON support)
         # Get first open child bead by priority
