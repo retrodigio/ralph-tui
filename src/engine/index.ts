@@ -178,11 +178,15 @@ export class ExecutionEngine {
     this.state.startedAt = new Date().toISOString();
     this.shouldStop = false;
 
+    // Fetch initial tasks to include in started event
+    const initialTasks = await this.tracker.getTasks({ status: ['open', 'in_progress'] });
+
     this.emit({
       type: 'engine:started',
       timestamp: new Date().toISOString(),
       sessionId: '',
       totalTasks: this.state.totalTasks,
+      tasks: initialTasks,
     });
 
     try {

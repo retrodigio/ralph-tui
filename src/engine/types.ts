@@ -114,6 +114,8 @@ export interface EngineStartedEvent extends EngineEventBase {
   sessionId: string;
   /** Total tasks available */
   totalTasks: number;
+  /** All tasks to be displayed (open and in_progress) */
+  tasks: TrackerTask[];
 }
 
 /**

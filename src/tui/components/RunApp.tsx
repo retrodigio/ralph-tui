@@ -21,6 +21,7 @@ import { ProgressDashboard } from './ProgressDashboard.js';
 import { ConfirmationDialog } from './ConfirmationDialog.js';
 import { HelpOverlay } from './HelpOverlay.js';
 import type { ExecutionEngine, EngineEvent, IterationResult } from '../../engine/index.js';
+import type { TrackerTask } from '../../plugins/trackers/types.js';
 
 /**
  * View modes for the RunApp component
@@ -74,8 +75,46 @@ function engineStatusToRalphStatus(
   }
 }
 
-// Note: trackerStatusToTaskStatus is reserved for future use when
-// we load initial task state from the tracker
+/**
+ * Convert tracker status to TUI task status.
+ * Maps: open -> pending, in_progress -> active, completed -> done, etc.
+ */
+function trackerStatusToTaskStatus(trackerStatus: string): TaskStatus {
+  switch (trackerStatus) {
+    case 'open':
+      return 'pending';
+    case 'in_progress':
+      return 'active';
+    case 'completed':
+      return 'done';
+    case 'blocked':
+      return 'blocked';
+    case 'cancelled':
+      return 'done'; // Show cancelled as done (finished state)
+    default:
+      return 'pending';
+  }
+}
+
+/**
+ * Convert a TrackerTask to a TaskItem for display in the TUI.
+ */
+function trackerTaskToTaskItem(task: TrackerTask): TaskItem {
+  return {
+    id: task.id,
+    title: task.title,
+    status: trackerStatusToTaskStatus(task.status),
+    description: task.description,
+    priority: task.priority,
+    labels: task.labels,
+    type: task.type,
+    dependsOn: task.dependsOn,
+    blocks: task.blocks,
+    assignee: task.assignee,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+  };
+}
 
 /**
  * Main RunApp component for execution view
@@ -122,6 +161,10 @@ export function RunApp({
       switch (event.type) {
         case 'engine:started':
           setStatus('running');
+          // Initialize task list from engine with proper status mapping
+          if (event.tasks && event.tasks.length > 0) {
+            setTasks(event.tasks.map(trackerTaskToTaskItem));
+          }
           break;
 
         case 'engine:stopped':
