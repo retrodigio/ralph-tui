@@ -13,7 +13,12 @@
       "Bash(bd sync:*)",
       "Bash(xxd:*)",
       "Bash(./scripts/ralph/ralph-beads.sh:*)",
-      "Bash(bv:*)"
+      "Bash(bv:*)",
+      "Bash(bash -n:*)",
+      "Bash(ls:*)",
+      "Bash(bd export:*)",
+      "Bash(strace:*)",
+      "Bash(git log:*)"
     ]
   }
 }
