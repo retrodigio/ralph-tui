@@ -1,11 +1,11 @@
 /**
  * ABOUTME: Progress Dashboard component for the Ralph TUI.
- * Displays overall progress, time estimates, and execution status.
+ * Displays execution status, current task info, and agent/tracker configuration.
  * Shows detailed activity information to make engine state clear.
  */
 
 import type { ReactNode } from 'react';
-import { colors, statusIndicators, formatElapsedTime, layout, type RalphStatus } from '../theme.js';
+import { colors, statusIndicators, layout, type RalphStatus } from '../theme.js';
 
 /**
  * Props for the ProgressDashboard component
@@ -13,24 +13,12 @@ import { colors, statusIndicators, formatElapsedTime, layout, type RalphStatus }
 export interface ProgressDashboardProps {
   /** Current Ralph execution status */
   status: RalphStatus;
-  /** Number of tasks completed */
-  completedTasks: number;
-  /** Total number of tasks */
-  totalTasks: number;
-  /** Current iteration number (1-indexed) */
-  currentIteration: number;
-  /** Maximum number of iterations */
-  maxIterations: number;
-  /** Elapsed time in seconds since start */
-  elapsedTimeSeconds: number;
   /** Name of the agent being used */
   agentName: string;
   /** Name of the tracker being used */
   trackerName: string;
   /** Epic or project name */
   epicName?: string;
-  /** Number of completed iterations for ETA calculation */
-  completedIterations?: number;
   /** Current task ID being worked on (if any) */
   currentTaskId?: string;
   /** Current task title being worked on (if any) */
@@ -80,89 +68,18 @@ function getStatusDisplay(
 }
 
 /**
- * Calculate estimated time remaining based on average iteration duration
- */
-function calculateETA(
-  elapsedSeconds: number,
-  completedIterations: number,
-  maxIterations: number,
-  currentIteration: number
-): string {
-  // Need at least one completed iteration to estimate
-  if (completedIterations <= 0 || elapsedSeconds <= 0) {
-    return 'Calculating...';
-  }
-
-  // Average time per iteration
-  const avgTimePerIteration = elapsedSeconds / completedIterations;
-
-  // Remaining iterations (include current if not done)
-  const remainingIterations = maxIterations - currentIteration + 1;
-
-  if (remainingIterations <= 0) {
-    return 'Done';
-  }
-
-  const remainingSeconds = Math.round(avgTimePerIteration * remainingIterations);
-  return formatElapsedTime(remainingSeconds);
-}
-
-/**
- * Progress bar with percentage
- */
-function ProgressBar({
-  current,
-  total,
-  width,
-  label,
-}: {
-  current: number;
-  total: number;
-  width: number;
-  label?: string;
-}): ReactNode {
-  const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
-  const filledWidth = Math.floor((percentage / 100) * width);
-  const emptyWidth = width - filledWidth;
-
-  const filledBar = '█'.repeat(filledWidth);
-  const emptyBar = '░'.repeat(emptyWidth);
-
-  return (
-    <box style={{ flexDirection: 'row', gap: 1 }}>
-      {label && <text fg={colors.fg.secondary}>{label}</text>}
-      <text>
-        <span fg={colors.status.success}>{filledBar}</span>
-        <span fg={colors.fg.dim}>{emptyBar}</span>
-      </text>
-      <text fg={colors.fg.secondary}>
-        {current}/{total} ({percentage}%)
-      </text>
-    </box>
-  );
-}
-
-/**
  * Progress Dashboard component showing comprehensive execution status.
  * Provides clear visibility into what the engine is doing at any moment.
  */
 export function ProgressDashboard({
   status,
-  completedTasks,
-  totalTasks,
-  currentIteration,
-  maxIterations,
-  elapsedTimeSeconds,
   agentName,
   trackerName,
   epicName,
-  completedIterations = 0,
   currentTaskId,
   currentTaskTitle,
 }: ProgressDashboardProps): ReactNode {
   const statusDisplay = getStatusDisplay(status, currentTaskId);
-  const eta = calculateETA(elapsedTimeSeconds, completedIterations, maxIterations, currentIteration);
-  const taskProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // Show current task title when executing
   const taskDisplay = currentTaskTitle && (status === 'executing' || status === 'running')
@@ -195,7 +112,7 @@ export function ProgressDashboard({
         </box>
         <box style={{ flexDirection: 'row', gap: 2 }}>
           <text fg={colors.fg.secondary}>Agent: </text>
-          <text fg={colors.accent.tertiary}>{agentName}</text>
+          <text fg={colors.accent.secondary}>{agentName}</text>
           <text fg={colors.fg.muted}> | </text>
           <text fg={colors.fg.secondary}>Tracker: </text>
           <text fg={colors.accent.tertiary}>{trackerName}</text>
@@ -212,41 +129,6 @@ export function ProgressDashboard({
         </box>
       )}
 
-      {/* Progress bars row */}
-      <box style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 2 }}>
-        {/* Task progress */}
-        <box style={{ flexGrow: 1 }}>
-          <ProgressBar
-            current={completedTasks}
-            total={totalTasks}
-            width={15}
-            label="Tasks:"
-          />
-        </box>
-
-        {/* Iteration progress */}
-        <box style={{ flexGrow: 1 }}>
-          <ProgressBar
-            current={currentIteration}
-            total={maxIterations}
-            width={15}
-            label="Iterations:"
-          />
-        </box>
-      </box>
-
-      {/* Time row */}
-      <box style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <text fg={colors.fg.secondary}>
-          ⏱ Elapsed: <span fg={colors.fg.primary}>{formatElapsedTime(elapsedTimeSeconds)}</span>
-        </text>
-        <text fg={colors.fg.secondary}>
-          ⏳ ETA: <span fg={status === 'running' || status === 'executing' ? colors.accent.primary : colors.fg.muted}>{eta}</span>
-        </text>
-        <text fg={colors.fg.muted}>
-          {taskProgress}% complete
-        </text>
-      </box>
     </box>
   );
 }

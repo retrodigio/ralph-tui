@@ -317,8 +317,6 @@ export function RunApp({
   const trackerName = trackerType || storedConfig?.defaultTracker || storedConfig?.tracker || 'beads';
   // Dashboard visibility state (off by default for compact header design)
   const [showDashboard, setShowDashboard] = useState(false);
-  // Completed iterations count for ETA calculation
-  const [completedIterations, setCompletedIterations] = useState(0);
   // Iteration history state
   const [iterations, setIterations] = useState<IterationResult[]>([]);
   const [totalIterations] = useState(10); // Default max iterations for display
@@ -488,8 +486,6 @@ export function RunApp({
           break;
 
         case 'iteration:completed':
-          // Increment completed iterations for ETA calculation
-          setCompletedIterations((prev) => prev + 1);
           // Clear current task info and transition back to selecting
           setCurrentTaskId(undefined);
           setCurrentTaskTitle(undefined);
@@ -1103,15 +1099,9 @@ export function RunApp({
       {showDashboard && (
         <ProgressDashboard
           status={status}
-          completedTasks={completedTasks}
-          totalTasks={totalTasks}
-          currentIteration={currentIteration}
-          maxIterations={totalIterations}
-          elapsedTimeSeconds={elapsedTime}
           agentName={agentName}
           trackerName={trackerName || 'beads'}
           epicName={epicName}
-          completedIterations={completedIterations}
           currentTaskId={currentTaskId}
           currentTaskTitle={currentTaskTitle}
         />

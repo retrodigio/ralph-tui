@@ -175,6 +175,14 @@ export class ExecutionEngine {
       );
     }
 
+    // Validate model if specified
+    if (this.config.model) {
+      const modelError = this.agent.validateModel(this.config.model);
+      if (modelError) {
+        throw new Error(modelError);
+      }
+    }
+
     // Store reference to primary agent for recovery attempts
     this.primaryAgentInstance = this.agent;
 

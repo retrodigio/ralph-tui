@@ -320,7 +320,7 @@ Ralph TUI includes these skills (installed during `ralph-tui setup`):
 | `--prd <path>` | PRD file path (auto-switches to json tracker) |
 | `--epic <id>` | Epic ID for beads tracker |
 | `--agent <name>` | Override agent plugin (e.g., `claude`, `opencode`) |
-| `--model <name>` | Override model (e.g., `opus`, `sonnet`) |
+| `--model <name>` | Override model (see [Model Options](#model-options) below) |
 | `--tracker <name>` | Override tracker plugin (e.g., `beads`, `beads-bv`, `json`) |
 | `--iterations <n>` | Maximum iterations (0 = unlimited) |
 | `--delay <ms>` | Delay between iterations in milliseconds |
@@ -329,6 +329,40 @@ Ralph TUI includes these skills (installed during `ralph-tui setup`):
 | `--progress-file <path>` | Progress file for cross-iteration context (default: .ralph-tui/progress.md) |
 | `--headless` | Run without TUI (alias: `--no-tui`) |
 | `--no-setup` | Skip interactive setup even if no config exists |
+
+### Model Options
+
+The `--model` flag accepts different values depending on which agent you're using:
+
+#### Claude Agent
+
+```bash
+ralph-tui run --agent claude --model <model>
+```
+
+| Model | Description |
+|-------|-------------|
+| `sonnet` | Claude Sonnet - balanced performance and cost |
+| `opus` | Claude Opus - most capable, higher cost |
+| `haiku` | Claude Haiku - fastest, lowest cost |
+
+#### OpenCode Agent
+
+```bash
+ralph-tui run --agent opencode --model <provider>/<model>
+```
+
+Models use `provider/model` format. Valid providers:
+
+| Provider | Example Models |
+|----------|----------------|
+| `anthropic` | `anthropic/claude-3-5-sonnet`, `anthropic/claude-3-opus` |
+| `openai` | `openai/gpt-4o`, `openai/gpt-4-turbo` |
+| `google` | `google/gemini-pro`, `google/gemini-1.5-pro` |
+| `xai` | `xai/grok-1` |
+| `ollama` | `ollama/llama3`, `ollama/codellama` |
+
+> **Note:** Model names within each provider are validated by the provider's API. If you specify an invalid model name, you'll see an error from the underlying agent CLI.
 
 ### Create-PRD Options
 

@@ -332,6 +332,14 @@ export interface AgentPlugin {
   validateSetup(answers: Record<string, unknown>): Promise<string | null>;
 
   /**
+   * Validate a model name for this agent.
+   * Called when --model CLI flag is provided to check compatibility.
+   * @param model The model name to validate (may be empty string)
+   * @returns null if valid, or an error message string if invalid
+   */
+  validateModel(model: string): string | null;
+
+  /**
    * Clean up resources when the plugin is unloaded.
    * Called when Ralph TUI shuts down. Should interrupt any running executions.
    */

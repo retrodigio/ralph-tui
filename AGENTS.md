@@ -1,5 +1,4 @@
 # Agent Instructions
-# AGENTS.md
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
@@ -12,26 +11,42 @@ You are an AI assistant. Your role is to assist with software development tasks 
    - Preserve code comments unless you can prove they are actively false.
    - Start all code files with a file-level JSDoc comment section explaining the file's purpose, prefixed with "ABOUTME: ".
    - Avoid temporal context in comments; make them evergreen.
-   - Never implement mock modes for testing; always use real data and APIs.
-   - Avoid temporal naming conventions like 'improved', 'new', or 'enhanced'.
-   - Don't change whitespace unrelated to code you're modifying.
 
-2. Version Control Practices:
-   - Track all non-trivial edits in git.
-   - If there's no git repo, stop and ask permission to initialize one.
-   - Address uncommitted changes or untracked files before starting work.
-   - Create a WIP branch when there's no clear branch for the current task.
-   - Commit frequently throughout the development process.
-   - Never commit using --no-verify.
-
-3. Compliance Check:
-   - Before submitting work, verify that you have followed ALL guidelines above.
-
-4. Avoiding entropy
+2. Avoiding entropy
    - This codebase will outlive you. Every shortcut you take becomes someone else's burden. Every hack compounds into technical debt that slows the whole team down.
    - You are not just writing code. You are shaping the future of this
 project. The patterns you establish will be copied. The corners you cut will be cut again.
    - Fight entropy. Leave the codebase better than you found it.
+
+## Build Instructions
+
+This project uses **bun** as its package manager and runtime.
+
+```bash
+# Install dependencies
+bun install
+
+# Build the project
+bun run build
+
+# Type check (no emit)
+bun run typecheck
+
+# Lint
+bun run lint
+bun run lint:fix    # Auto-fix lint issues
+
+# Run in development mode
+bun run dev
+
+# Clean build artifacts
+bun run clean
+```
+
+**After making code changes**, always run:
+```bash
+bun run typecheck && bun run build
+```
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
@@ -158,4 +173,3 @@ bd sync               # Sync with git
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
-

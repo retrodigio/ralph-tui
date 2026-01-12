@@ -383,6 +383,26 @@ export class ClaudeAgentPlugin extends BaseAgentPlugin {
   }
 
   /**
+   * Valid model names for the Claude agent.
+   */
+  static readonly VALID_MODELS = ['sonnet', 'opus', 'haiku'] as const;
+
+  /**
+   * Validate a model name for the Claude agent.
+   * @param model The model name to validate
+   * @returns null if valid, error message if invalid
+   */
+  override validateModel(model: string): string | null {
+    if (model === '' || model === undefined) {
+      return null; // Empty is valid (uses default)
+    }
+    if (!ClaudeAgentPlugin.VALID_MODELS.includes(model as typeof ClaudeAgentPlugin.VALID_MODELS[number])) {
+      return `Invalid model "${model}". Claude agent accepts: ${ClaudeAgentPlugin.VALID_MODELS.join(', ')}`;
+    }
+    return null;
+  }
+
+  /**
    * Parse a single line of JSONL output from Claude Code.
    * Attempts to parse as JSON, falls back to raw text on failure.
    *

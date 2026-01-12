@@ -374,6 +374,36 @@ export class OpenCodeAgentPlugin extends BaseAgentPlugin {
 
     return null;
   }
+
+  /**
+   * Valid providers for the OpenCode agent.
+   */
+  static readonly VALID_PROVIDERS = ['anthropic', 'openai', 'google', 'xai', 'ollama'] as const;
+
+  /**
+   * Validate a model name for the OpenCode agent.
+   * Accepts either "provider/model" format or just "model".
+   * Validates the provider if specified, but model names are passed through
+   * since they vary by provider and change frequently.
+   * @param model The model name to validate
+   * @returns null if valid, error message if invalid
+   */
+  override validateModel(model: string): string | null {
+    if (model === '' || model === undefined) {
+      return null; // Empty is valid (uses default)
+    }
+
+    // Check if model is in provider/model format
+    if (model.includes('/')) {
+      const [provider] = model.split('/');
+      if (!OpenCodeAgentPlugin.VALID_PROVIDERS.includes(provider as typeof OpenCodeAgentPlugin.VALID_PROVIDERS[number])) {
+        return `Invalid provider "${provider}" in model "${model}". Valid providers: ${OpenCodeAgentPlugin.VALID_PROVIDERS.join(', ')}`;
+      }
+    }
+
+    // Model name itself is not validated - let opencode CLI handle it
+    return null;
+  }
 }
 
 /**

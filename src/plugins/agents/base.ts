@@ -445,6 +445,15 @@ export abstract class BaseAgentPlugin implements AgentPlugin {
   }
 
   /**
+   * Validate a model name for this agent.
+   * Default implementation accepts any model (returns null).
+   * Subclasses should override for agent-specific validation.
+   */
+  validateModel(_model: string): string | null {
+    return null;
+  }
+
+  /**
    * Clean up resources.
    * Interrupts all running executions.
    */
