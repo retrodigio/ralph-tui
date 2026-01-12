@@ -32,3 +32,5 @@ export { ChatView } from './ChatView.js';
 export type { ChatViewProps } from './ChatView.js';
 export { PrdChatApp } from './PrdChatApp.js';
 export type { PrdChatAppProps } from './PrdChatApp.js';
+export { SubagentTreePanel } from './SubagentTreePanel.js';
+export type { SubagentTreePanelProps } from './SubagentTreePanel.js';
