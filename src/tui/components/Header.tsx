@@ -1,12 +1,16 @@
 /**
  * ABOUTME: Compact header component for the Ralph TUI.
  * Displays only essential info: status indicator, current task (if running), progress (X/Y), elapsed time.
+ * Also shows active agent name with fallback indicator and rate limit status.
  * Designed for minimal vertical footprint while providing clear visibility into current state.
  */
 
 import type { ReactNode } from 'react';
 import { colors, statusIndicators, formatElapsedTime, layout, type RalphStatus } from '../theme.js';
 import type { HeaderProps } from '../types.js';
+
+/** Rate limit indicator icon */
+const RATE_LIMIT_ICON = '⏳';
 
 /**
  * Truncate text to fit within a given width, adding ellipsis if needed
@@ -74,10 +78,46 @@ function MiniProgressBar({
 }
 
 /**
+ * Get the display name and styling for the active agent.
+ * Shows fallback indicator when on fallback agent with different color.
+ */
+function getAgentDisplay(
+  agentName: string | undefined,
+  activeAgentState: HeaderProps['activeAgentState'],
+  rateLimitState: HeaderProps['rateLimitState']
+): { displayName: string; color: string; showRateLimitIcon: boolean } {
+  // Use active agent from engine state if available, otherwise fall back to config
+  const activeAgent = activeAgentState?.plugin ?? agentName;
+  const isOnFallback = activeAgentState?.reason === 'fallback';
+  const isPrimaryRateLimited = rateLimitState?.limitedAt !== undefined;
+
+  if (!activeAgent) {
+    return { displayName: '', color: colors.accent.secondary, showRateLimitIcon: false };
+  }
+
+  if (isOnFallback) {
+    // On fallback agent - show with fallback indicator and warning color
+    return {
+      displayName: `${activeAgent} (fallback)`,
+      color: colors.status.warning,
+      showRateLimitIcon: isPrimaryRateLimited,
+    };
+  }
+
+  return {
+    displayName: activeAgent,
+    color: colors.accent.secondary,
+    showRateLimitIcon: false,
+  };
+}
+
+/**
  * Compact header component showing essential information:
  * - Status indicator and label
  * - Current task (when executing)
  * - Agent and tracker plugin names (for configuration visibility)
+ * - Fallback indicator when using fallback agent
+ * - Rate limit icon when primary agent is limited
  * - Progress (X/Y tasks) with mini bar
  * - Elapsed time
  */
@@ -90,9 +130,14 @@ export function Header({
   totalTasks = 0,
   agentName,
   trackerName,
+  activeAgentState,
+  rateLimitState,
 }: HeaderProps): ReactNode {
   const statusDisplay = getStatusDisplay(status);
   const formattedTime = formatElapsedTime(elapsedTime);
+
+  // Get agent display info including fallback status
+  const agentDisplay = getAgentDisplay(agentName, activeAgentState, rateLimitState);
 
   // Show abbreviated task title when executing (max 40 chars), fallback to task ID
   const isActive = status === 'executing' || status === 'running';
@@ -133,11 +178,16 @@ export function Header({
 
       {/* Right section: Agent/Tracker + Progress (X/Y) with mini bar + elapsed time */}
       <box style={{ flexDirection: 'row', gap: 2, alignItems: 'center' }}>
-        {/* Agent and tracker plugin names */}
-        {(agentName || trackerName) && (
+        {/* Agent and tracker plugin names with fallback/rate limit indicators */}
+        {(agentDisplay.displayName || trackerName) && (
           <text fg={colors.fg.muted}>
-            {agentName && <span fg={colors.accent.secondary}>{agentName}</span>}
-            {agentName && trackerName && <span fg={colors.fg.dim}>/</span>}
+            {agentDisplay.showRateLimitIcon && (
+              <span fg={colors.status.warning}>{RATE_LIMIT_ICON} </span>
+            )}
+            {agentDisplay.displayName && (
+              <span fg={agentDisplay.color}>{agentDisplay.displayName}</span>
+            )}
+            {agentDisplay.displayName && trackerName && <span fg={colors.fg.dim}>/</span>}
             {trackerName && <span fg={colors.accent.tertiary}>{trackerName}</span>}
           </text>
         )}

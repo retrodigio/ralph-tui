@@ -4,7 +4,7 @@
  */
 
 import type { TaskStatus, RalphStatus } from './theme.js';
-import type { IterationResult, SubagentTreeNode } from '../engine/types.js';
+import type { IterationResult, SubagentTreeNode, ActiveAgentState, RateLimitState } from '../engine/types.js';
 import type { TaskPriority } from '../plugins/trackers/types.js';
 import type { SubagentDetailLevel } from '../config/types.js';
 
@@ -90,6 +90,10 @@ export interface HeaderProps {
   agentName?: string;
   /** Selected tracker plugin name (e.g., "beads", "beads-bv", "json") */
   trackerName?: string;
+  /** Active agent state from engine (tracks which agent is running and why) */
+  activeAgentState?: ActiveAgentState | null;
+  /** Rate limit state from engine (tracks primary agent rate limiting) */
+  rateLimitState?: RateLimitState | null;
 }
 
 /**

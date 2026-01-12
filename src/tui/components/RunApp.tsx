@@ -23,7 +23,13 @@ import { SettingsView } from './SettingsView.js';
 import { EpicLoaderOverlay } from './EpicLoaderOverlay.js';
 import type { EpicLoaderMode } from './EpicLoaderOverlay.js';
 import { SubagentTreePanel } from './SubagentTreePanel.js';
-import type { ExecutionEngine, EngineEvent, IterationResult } from '../../engine/index.js';
+import type {
+  ExecutionEngine,
+  EngineEvent,
+  IterationResult,
+  ActiveAgentState,
+  RateLimitState,
+} from '../../engine/index.js';
 import type { TrackerTask } from '../../plugins/trackers/types.js';
 import type { StoredConfig, SubagentDetailLevel } from '../../config/types.js';
 import type { AgentPluginMeta } from '../../plugins/agents/types.js';
@@ -370,6 +376,11 @@ export function RunApp({
   // Tracks subagents even when panel is hidden (subagentTree state continues updating)
   const [subagentPanelVisible, setSubagentPanelVisible] = useState(initialSubagentPanelVisible);
 
+  // Active agent state from engine - tracks which agent is running and why (primary/fallback)
+  const [activeAgentState, setActiveAgentState] = useState<ActiveAgentState | null>(null);
+  // Rate limit state from engine - tracks primary agent rate limiting
+  const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(null);
+
   // Filter and sort tasks for display
   // Sort order: active → actionable → blocked → done → closed
   // This is computed early so keyboard handlers can use displayedTasks.length
@@ -553,6 +564,37 @@ export function RunApp({
           }
           break;
 
+        case 'agent:switched':
+          // Agent was switched (primary to fallback or recovery)
+          setActiveAgentState({
+            plugin: event.newAgent,
+            reason: event.reason,
+            since: event.timestamp,
+          });
+          if (event.rateLimitState) {
+            setRateLimitState(event.rateLimitState);
+          }
+          break;
+
+        case 'agent:all-limited':
+          // All agents (primary + fallbacks) are rate limited
+          setRateLimitState(event.rateLimitState);
+          break;
+
+        case 'agent:recovery-attempted':
+          // Primary agent recovery was attempted
+          if (event.success) {
+            // Primary recovered - update state to show primary agent again
+            setActiveAgentState({
+              plugin: event.primaryAgent,
+              reason: 'primary',
+              since: event.timestamp,
+            });
+            // Clear rate limit state since primary is recovered
+            setRateLimitState(null);
+          }
+          break;
+
         case 'tasks:refreshed':
           // Update task list with fresh data from tracker
           setTasks(convertTasksWithDependencyStatus(event.tasks));
@@ -582,6 +624,13 @@ export function RunApp({
     const state = engine.getState();
     setCurrentIteration(state.currentIteration);
     setCurrentOutput(state.currentOutput);
+    // Initialize active agent and rate limit state from engine
+    if (state.activeAgent) {
+      setActiveAgentState(state.activeAgent);
+    }
+    if (state.rateLimitState) {
+      setRateLimitState(state.rateLimitState);
+    }
   }, [engine]);
 
   // Calculate the number of items in iteration history (iterations + pending)
@@ -1033,7 +1082,7 @@ export function RunApp({
         backgroundColor: colors.bg.primary,
       }}
     >
-      {/* Header - compact design showing essential info + agent/tracker */}
+      {/* Header - compact design showing essential info + agent/tracker + fallback status */}
       <Header
         status={status}
         elapsedTime={elapsedTime}
@@ -1043,6 +1092,8 @@ export function RunApp({
         totalTasks={totalTasks}
         agentName={agentName}
         trackerName={trackerName}
+        activeAgentState={activeAgentState}
+        rateLimitState={rateLimitState}
       />
 
       {/* Progress Dashboard - toggleable with 'd' key */}
