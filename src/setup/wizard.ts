@@ -327,34 +327,36 @@ export async function runSetupWizard(
 
     if (bundledSkills.length > 0) {
       printInfo('Ralph TUI includes AI skills that enhance agent capabilities.');
+      printInfo('Installing skills ensures you have the latest versions.');
       console.log();
 
       for (const skill of bundledSkills) {
         const alreadyInstalled = await isSkillInstalled(skill.name);
-
-        if (alreadyInstalled) {
-          printInfo(`  ${skill.name}: Already installed`);
-          continue;
-        }
+        const actionLabel = alreadyInstalled ? 'Update' : 'Install';
 
         const installThisSkill = await promptBoolean(
-          `Install skill: ${skill.name}?`,
+          `${actionLabel} skill: ${skill.name}?`,
           {
             default: true,
-            help: skill.description,
+            help: alreadyInstalled
+              ? `${skill.description} (currently installed - update to latest)`
+              : skill.description,
           }
         );
 
         if (installThisSkill) {
-          const result = await installSkill(skill.name);
+          // Always use force to overwrite existing skills with latest version
+          const result = await installSkill(skill.name, { force: true });
           if (result.success) {
-            printSuccess(`  Installed: ${skill.name}`);
+            printSuccess(`  ${alreadyInstalled ? 'Updated' : 'Installed'}: ${skill.name}`);
             if (result.path) {
               printInfo(`    Location: ${result.path}`);
             }
           } else {
-            printError(`  Failed to install ${skill.name}: ${result.error}`);
+            printError(`  Failed to ${actionLabel.toLowerCase()} ${skill.name}: ${result.error}`);
           }
+        } else if (alreadyInstalled) {
+          printInfo(`  ${skill.name}: Keeping existing version`);
         }
       }
     } else {

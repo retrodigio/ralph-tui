@@ -244,9 +244,18 @@ export function PrdChatApp({
           break;
 
         default:
-          // Handle regular character input
-          if (key.sequence && key.sequence.length === 1 && key.sequence.charCodeAt(0) >= 32) {
-            setInputValue((prev) => prev + key.sequence);
+          // Handle regular character input and pasted content
+          if (key.sequence) {
+            // Filter out control characters (< 32) but keep printable chars
+            // This handles both single keypresses and multi-character paste
+            const printableChars = key.sequence
+              .split('')
+              .filter((char) => char.charCodeAt(0) >= 32)
+              .join('');
+
+            if (printableChars.length > 0) {
+              setInputValue((prev) => prev + printableChars);
+            }
           }
           break;
       }
