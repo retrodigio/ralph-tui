@@ -22,6 +22,11 @@ export {
   copyBuiltinTemplate,
   getCustomTemplatePath,
   clearTemplateCache,
+  getUserConfigDir,
+  getDefaultPromptFilename,
+  getUserPromptPath,
+  getBundledPrompt,
+  initializeUserPrompts,
 } from './engine.js';
 
 export {
@@ -30,3 +35,8 @@ export {
   BEADS_BV_TEMPLATE,
   JSON_TEMPLATE,
 } from './builtin.js';
+
+export {
+  PROMPT_JSON,
+  PROMPT_BEADS,
+} from './prompts.js';

@@ -84,6 +84,9 @@ export const StoredConfigSchema = z
 
     // Error handling
     errorHandling: ErrorHandlingConfigSchema.optional(),
+
+    // Custom prompt template path
+    prompt_template: z.string().optional(),
   })
   .strict();
 

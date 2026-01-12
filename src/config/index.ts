@@ -421,7 +421,8 @@ export async function buildConfig(
     model: options.model,
     showTui: !options.headless,
     errorHandling,
-    promptTemplate: storedConfig.prompt_template,
+    // CLI --prompt takes precedence over config file prompt_template
+    promptTemplate: options.promptPath ?? storedConfig.prompt_template,
   };
 }
 

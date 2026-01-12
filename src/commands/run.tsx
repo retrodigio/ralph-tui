@@ -147,6 +147,13 @@ export function parseRunArgs(args: string[]): ExtendedRuntimeOptions {
       case '--no-setup':
         options.noSetup = true;
         break;
+
+      case '--prompt':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options.promptPath = nextArg;
+          i++;
+        }
+        break;
     }
   }
 
@@ -168,6 +175,7 @@ Options:
   --agent <name>      Override agent plugin (e.g., claude, opencode)
   --model <name>      Override model (e.g., opus, sonnet)
   --tracker <name>    Override tracker plugin (e.g., beads, beads-bv, json)
+  --prompt <path>     Custom prompt file (default: based on tracker mode)
   --iterations <n>    Maximum iterations (0 = unlimited)
   --delay <ms>        Delay between iterations in milliseconds
   --cwd <path>        Working directory

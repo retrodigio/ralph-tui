@@ -49,6 +49,9 @@ export interface RuntimeOptions {
 
   /** Maximum retries for error handling */
   maxRetries?: number;
+
+  /** Custom prompt file path (overrides config and defaults) */
+  promptPath?: string;
 }
 
 /**

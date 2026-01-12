@@ -6,6 +6,7 @@
 import Handlebars from 'handlebars';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { homedir } from 'node:os';
 import type { TrackerTask } from '../plugins/trackers/types.js';
 import type { RalphConfig } from '../config/types.js';
 import type {
@@ -21,6 +22,7 @@ import {
   BEADS_BV_TEMPLATE,
   JSON_TEMPLATE,
 } from './builtin.js';
+import { PROMPT_JSON, PROMPT_BEADS } from './prompts.js';
 
 /**
  * Cache for compiled templates to avoid recompilation
@@ -65,9 +67,48 @@ export function getTemplateTypeFromPlugin(pluginName: string): BuiltinTemplateTy
 }
 
 /**
- * Load a template from a custom path or fall back to built-in.
+ * Get the user config directory path for ralph-tui.
+ * @returns Path to ~/.config/ralph-tui/
+ */
+export function getUserConfigDir(): string {
+  return path.join(homedir(), '.config', 'ralph-tui');
+}
+
+/**
+ * Get the default prompt filename for a tracker type.
+ * @param trackerType The tracker type
+ * @returns The default prompt filename
+ */
+export function getDefaultPromptFilename(trackerType: BuiltinTemplateType): string {
+  switch (trackerType) {
+    case 'beads':
+    case 'beads-bv':
+      return 'prompt-beads.md';
+    case 'json':
+    default:
+      return 'prompt.md';
+  }
+}
+
+/**
+ * Get the path to the default user prompt file for a tracker type.
+ * @param trackerType The tracker type
+ * @returns Full path to the user prompt file in config directory
+ */
+export function getUserPromptPath(trackerType: BuiltinTemplateType): string {
+  return path.join(getUserConfigDir(), getDefaultPromptFilename(trackerType));
+}
+
+/**
+ * Load a template from a custom path or fall back to user config or built-in.
+ *
+ * Resolution order:
+ * 1. customPath (explicit --prompt argument or config file prompt_template)
+ * 2. ~/.config/ralph-tui/{mode-specific}.md (user config directory)
+ * 3. Built-in template (bundled default)
+ *
  * @param customPath Optional path to custom template
- * @param trackerType Tracker type for built-in template fallback
+ * @param trackerType Tracker type for user config and built-in template fallback
  * @param cwd Working directory for relative path resolution
  * @returns The template load result
  */
@@ -76,7 +117,7 @@ export function loadTemplate(
   trackerType: BuiltinTemplateType,
   cwd: string
 ): TemplateLoadResult {
-  // Try custom template first
+  // 1. Try explicit custom template first (from --prompt or config)
   if (customPath) {
     const resolvedPath = path.isAbsolute(customPath)
       ? customPath
@@ -106,7 +147,22 @@ export function loadTemplate(
     }
   }
 
-  // Use built-in template
+  // 2. Try user config directory prompt file
+  const userPromptPath = getUserPromptPath(trackerType);
+  try {
+    if (fs.existsSync(userPromptPath)) {
+      const content = fs.readFileSync(userPromptPath, 'utf-8');
+      return {
+        success: true,
+        content,
+        source: userPromptPath,
+      };
+    }
+  } catch {
+    // Silently fall through to built-in template
+  }
+
+  // 3. Use built-in template
   const content = getBuiltinTemplate(trackerType);
   return {
     success: true,
@@ -322,4 +378,82 @@ export function copyBuiltinTemplate(
       error: `Failed to copy template: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
+}
+
+/**
+ * Get the bundled prompt content for a tracker type.
+ * These are the markdown instruction files (not Handlebars templates).
+ * @param trackerType The tracker type
+ * @returns The prompt content
+ */
+export function getBundledPrompt(trackerType: BuiltinTemplateType): string {
+  switch (trackerType) {
+    case 'beads':
+    case 'beads-bv':
+      return PROMPT_BEADS;
+    case 'json':
+    default:
+      return PROMPT_JSON;
+  }
+}
+
+/**
+ * Initialize user config directory with default prompt files.
+ * Creates ~/.config/ralph-tui/ and copies prompt.md and prompt-beads.md.
+ * @param force Overwrite existing files
+ * @returns Results for each file
+ */
+export function initializeUserPrompts(force = false): {
+  success: boolean;
+  results: Array<{ file: string; created: boolean; skipped: boolean; error?: string }>;
+} {
+  const configDir = getUserConfigDir();
+  const results: Array<{ file: string; created: boolean; skipped: boolean; error?: string }> = [];
+
+  // Ensure config directory exists
+  try {
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+  } catch (error) {
+    return {
+      success: false,
+      results: [{
+        file: configDir,
+        created: false,
+        skipped: false,
+        error: `Failed to create config directory: ${error instanceof Error ? error.message : String(error)}`,
+      }],
+    };
+  }
+
+  // Files to create
+  const promptFiles = [
+    { filename: 'prompt.md', content: PROMPT_JSON },
+    { filename: 'prompt-beads.md', content: PROMPT_BEADS },
+  ];
+
+  for (const { filename, content } of promptFiles) {
+    const filePath = path.join(configDir, filename);
+
+    try {
+      if (fs.existsSync(filePath) && !force) {
+        results.push({ file: filename, created: false, skipped: true });
+        continue;
+      }
+
+      fs.writeFileSync(filePath, content, 'utf-8');
+      results.push({ file: filename, created: true, skipped: false });
+    } catch (error) {
+      results.push({
+        file: filename,
+        created: false,
+        skipped: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  const success = results.every((r) => r.created || r.skipped);
+  return { success, results };
 }
