@@ -296,14 +296,9 @@ export class BeadsTrackerPlugin extends BaseTrackerPlugin {
   }
 
   getSetupQuestions(): SetupQuestion[] {
+    // Note: epicId is NOT asked here - it should be specified via CLI flag (--epic)
+    // when starting the TUI, not saved in config
     return [
-      {
-        id: 'epicId',
-        prompt: 'Epic ID to track (parent bead for all tasks):',
-        type: 'text',
-        required: true,
-        help: 'The bead ID of the epic containing tasks to work on (e.g., "project-123")',
-      },
       {
         id: 'beadsDir',
         prompt: 'Path to .beads directory:',
@@ -324,27 +319,14 @@ export class BeadsTrackerPlugin extends BaseTrackerPlugin {
   }
 
   override async validateSetup(
-    answers: Record<string, unknown>
+    _answers: Record<string, unknown>
   ): Promise<string | null> {
-    // Validate epicId is provided
-    if (!answers.epicId || typeof answers.epicId !== 'string') {
-      return 'Epic ID is required';
-    }
+    // Note: epicId is validated at runtime when specified via CLI, not during setup
 
     // Check if beads is available
     const detection = await this.detect();
     if (!detection.available) {
       return detection.error ?? 'Beads tracker not available';
-    }
-
-    // Verify the epic exists
-    const { exitCode, stderr } = await execBd(
-      ['show', answers.epicId as string, '--json'],
-      this.workingDir
-    );
-
-    if (exitCode !== 0) {
-      return `Epic not found: ${answers.epicId}. Error: ${stderr}`;
     }
 
     return null;

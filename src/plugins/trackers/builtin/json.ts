@@ -184,55 +184,16 @@ export class JsonTrackerPlugin extends BaseTrackerPlugin {
   }
 
   getSetupQuestions(): SetupQuestion[] {
-    return [
-      {
-        id: 'path',
-        prompt: 'Path to prd.json file:',
-        type: 'path',
-        default: './prd.json',
-        required: true,
-        help: 'The JSON file containing your task definitions',
-      },
-      {
-        id: 'branchName',
-        prompt: 'Git branch name for this work:',
-        type: 'text',
-        default: '',
-        required: false,
-        help: 'The git branch to use for this work (optional)',
-      },
-    ];
+    // Note: path to prd.json is NOT asked here - it should be specified via CLI flag (--prd)
+    // when starting the TUI, not saved in config. The prd.json file may change between runs.
+    return [];
   }
 
   override async validateSetup(
-    answers: Record<string, unknown>
+    _answers: Record<string, unknown>
   ): Promise<string | null> {
-    if (!answers.path || typeof answers.path !== 'string') {
-      return 'File path is required';
-    }
-
-    const resolvedPath = resolve(answers.path as string);
-
-    // Check if file exists
-    try {
-      await access(resolvedPath, constants.R_OK);
-    } catch {
-      return `File not found or not readable: ${resolvedPath}`;
-    }
-
-    // Try to parse it
-    try {
-      const content = await readFile(resolvedPath, 'utf-8');
-      const prd = JSON.parse(content) as PrdJson;
-
-      if (!prd.userStories || !Array.isArray(prd.userStories)) {
-        return 'Invalid prd.json: missing userStories array';
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return `Failed to parse prd.json: ${message}`;
-    }
-
+    // Note: path is validated at runtime when specified via CLI (--prd), not during setup
+    // The JSON tracker just needs to exist; actual file validation happens when starting a run
     return null;
   }
 
