@@ -814,7 +814,13 @@ export function RunApp({
           // Add 10 iterations to maxIterations (extends the session without stopping)
           // Handle both '+' (key.name) and Shift+= (key.sequence === '+')
           if (key.name === '+' || key.sequence === '+') {
-            engine.addIterations(10);
+            engine.addIterations(10).then((shouldContinue) => {
+              if (shouldContinue) {
+                // Engine was idle (stopped due to max_iterations), restart it
+                setStatus('running');
+                engine.continueExecution();
+              }
+            });
           }
           break;
 

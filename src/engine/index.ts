@@ -1039,15 +1039,19 @@ export class ExecutionEngine {
    * Add iterations to maxIterations at runtime.
    * Useful for extending a session without stopping.
    * @param count - Number of iterations to add (must be positive)
+   * @returns true if the engine should be restarted (was idle after hitting max_iterations)
    */
-  async addIterations(count: number): Promise<void> {
+  async addIterations(count: number): Promise<boolean> {
     if (count <= 0) {
-      return;
+      return false;
     }
 
     const previousMax = this.config.maxIterations;
     // Handle unlimited case (0 means unlimited)
     const newMax = previousMax === 0 ? 0 : previousMax + count;
+
+    // Check if we should restart (engine is idle and we're adding to a non-unlimited max)
+    const shouldRestart = this.state.status === 'idle' && previousMax > 0;
 
     // Update config
     this.config.maxIterations = newMax;
@@ -1064,6 +1068,38 @@ export class ExecutionEngine {
       previousMax,
       currentIteration: this.state.currentIteration,
     });
+
+    return shouldRestart;
+  }
+
+  /**
+   * Continue execution after adding more iterations.
+   * Call this after addIterations() returns true.
+   */
+  async continueExecution(): Promise<void> {
+    if (this.state.status !== 'idle') {
+      return; // Only continue from idle state
+    }
+
+    if (!this.agent || !this.tracker) {
+      throw new Error('Engine not initialized');
+    }
+
+    this.state.status = 'running';
+    this.shouldStop = false;
+
+    // Emit resumed event
+    this.emit({
+      type: 'engine:resumed',
+      timestamp: new Date().toISOString(),
+      fromIteration: this.state.currentIteration,
+    });
+
+    try {
+      await this.runLoop();
+    } finally {
+      this.state.status = 'idle';
+    }
   }
 
   /**
