@@ -256,19 +256,36 @@ export async function checkSoundAvailable(): Promise<boolean> {
   const os = platform();
 
   return new Promise((resolve) => {
-    let checkCmd: string;
-    let checkArgs: string[];
-
     switch (os) {
-      case 'darwin':
-        checkCmd = 'which';
-        checkArgs = ['afplay'];
+      case 'darwin': {
+        const proc = spawn('which', ['afplay'], { stdio: 'ignore' });
+        proc.on('close', (code) => resolve(code === 0));
+        proc.on('error', () => resolve(false));
         break;
+      }
 
-      case 'linux':
-        checkCmd = 'which';
-        checkArgs = ['paplay'];
+      case 'linux': {
+        // Check for paplay first (PulseAudio), fall back to aplay (ALSA)
+        // Matches the fallback order in playFile
+        const paplayProc = spawn('which', ['paplay'], { stdio: 'ignore' });
+        paplayProc.on('close', (code) => {
+          if (code === 0) {
+            resolve(true);
+          } else {
+            // paplay not found, try aplay
+            const aplayProc = spawn('which', ['aplay'], { stdio: 'ignore' });
+            aplayProc.on('close', (aplayCode) => resolve(aplayCode === 0));
+            aplayProc.on('error', () => resolve(false));
+          }
+        });
+        paplayProc.on('error', () => {
+          // paplay check failed, try aplay
+          const aplayProc = spawn('which', ['aplay'], { stdio: 'ignore' });
+          aplayProc.on('close', (aplayCode) => resolve(aplayCode === 0));
+          aplayProc.on('error', () => resolve(false));
+        });
         break;
+      }
 
       case 'win32':
         // PowerShell is always available on modern Windows
@@ -279,10 +296,6 @@ export async function checkSoundAvailable(): Promise<boolean> {
         resolve(false);
         return;
     }
-
-    const proc = spawn(checkCmd, checkArgs, { stdio: 'ignore' });
-    proc.on('close', (code) => resolve(code === 0));
-    proc.on('error', () => resolve(false));
   });
 }
 
