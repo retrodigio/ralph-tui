@@ -1,6 +1,7 @@
 /**
  * ABOUTME: Type definitions for the merge refinery module.
- * Defines interfaces for merge requests and their status management.
+ * Defines interfaces for merge requests, their status management,
+ * and git merge operations configuration.
  */
 
 /**
@@ -46,3 +47,47 @@ export type MergeRequestInput = Omit<
   MergeRequest,
   'id' | 'status' | 'retryCount'
 >;
+
+/**
+ * Configuration for merge operations
+ */
+export interface MergeConfig {
+  /** Target branch to merge into (e.g., "main") */
+  targetBranch: string;
+  /** Whether to run tests after merge */
+  runTests: boolean;
+  /** Command to run for tests */
+  testCommand: string;
+  /** Number of times to retry flaky tests before failing */
+  retryFlakyTests: number;
+  /** Whether to delete the branch after successful merge */
+  deleteAfterMerge: boolean;
+}
+
+/**
+ * Result of a merge operation
+ */
+export interface MergeResult {
+  /** Whether the merge succeeded */
+  success: boolean;
+  /** Whether there was a conflict */
+  conflict: boolean;
+  /** Whether tests failed after merge */
+  testsFailed: boolean;
+  /** The merge commit SHA if successful */
+  mergeCommit?: string;
+  /** Error message if failed */
+  error?: string;
+  /** List of files with conflicts */
+  conflictFiles?: string[];
+}
+
+/**
+ * Result of running tests
+ */
+export interface TestResult {
+  /** Whether tests passed */
+  success: boolean;
+  /** Test output (stdout/stderr) */
+  output: string;
+}
