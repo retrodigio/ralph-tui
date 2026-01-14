@@ -25,6 +25,7 @@ import { EpicLoaderOverlay } from './EpicLoaderOverlay.js';
 import type { EpicLoaderMode } from './EpicLoaderOverlay.js';
 import { SubagentTreePanel } from './SubagentTreePanel.js';
 import { WorkerListPanel } from './WorkerListPanel.js';
+import { WorkerPanel } from './WorkerPanel.js';
 import type {
   ExecutionEngine,
   EngineEvent,
@@ -393,6 +394,8 @@ export function RunApp({
   const [showRefinery, setShowRefinery] = useState(false); // Toggle refinery panel visibility
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null); // Selected worker by number
   const [_workersPaused, setWorkersPaused] = useState(false); // Track pause state for all workers
+  const [showWorkerOutput, setShowWorkerOutput] = useState(true); // Toggle output section in WorkerPanel
+  const [showWorkerSubagents, setShowWorkerSubagents] = useState(true); // Toggle subagents section in WorkerPanel
 
   // Mock parallel mode data (until WorkerPool is integrated)
   const [workers] = useState<Map<string, WorkerState>>(() => {
@@ -1005,8 +1008,14 @@ export function RunApp({
           break;
 
         case 'o':
-          // Toggle between details and output view in the right panel
-          setDetailsViewMode((prev) => (prev === 'details' ? 'output' : 'details'));
+          // Toggle output visibility
+          // In parallel mode with a selected worker: toggle WorkerPanel output section
+          // Otherwise: toggle between details and output view in the right panel
+          if (isParallelMode && selectedWorker) {
+            setShowWorkerOutput((prev) => !prev);
+          } else {
+            setDetailsViewMode((prev) => (prev === 'details' ? 'output' : 'details'));
+          }
           break;
 
         case 't':
@@ -1021,6 +1030,9 @@ export function RunApp({
               onSubagentPanelVisibilityChange?.(newVisible);
               return newVisible;
             });
+          } else if (isParallelMode && selectedWorker) {
+            // In parallel mode with selected worker: toggle WorkerPanel subagents section
+            setShowWorkerSubagents((prev) => !prev);
           } else {
             // Cycle through subagent detail levels: off → minimal → moderate → full → off
             setSubagentDetailLevel((prev) => {
@@ -1353,18 +1365,28 @@ export function RunApp({
             ) : (
               <LeftPanel tasks={displayedTasks} selectedIndex={selectedIndex} />
             )}
-            <RightPanel
-              selectedTask={selectedTask}
-              currentIteration={selectedTaskIteration.iteration}
-              iterationOutput={selectedTaskIteration.output}
-              viewMode={detailsViewMode}
-              iterationTiming={selectedTaskIteration.timing}
-              subagentDetailLevel={subagentDetailLevel}
-              subagentTree={subagentTree}
-              collapsedSubagents={collapsedSubagents}
-              focusedSubagentId={focusedSubagentId}
-              onSubagentToggle={handleSubagentToggle}
-            />
+            {/* Right panel: show WorkerPanel in parallel mode when a worker is selected, otherwise RightPanel */}
+            {isParallelMode && selectedWorker && workers.get(selectedWorker) ? (
+              <WorkerPanel
+                name={selectedWorker}
+                worker={workers.get(selectedWorker)!}
+                showOutput={showWorkerOutput}
+                showSubagents={showWorkerSubagents}
+              />
+            ) : (
+              <RightPanel
+                selectedTask={selectedTask}
+                currentIteration={selectedTaskIteration.iteration}
+                iterationOutput={selectedTaskIteration.output}
+                viewMode={detailsViewMode}
+                iterationTiming={selectedTaskIteration.timing}
+                subagentDetailLevel={subagentDetailLevel}
+                subagentTree={subagentTree}
+                collapsedSubagents={collapsedSubagents}
+                focusedSubagentId={focusedSubagentId}
+                onSubagentToggle={handleSubagentToggle}
+              />
+            )}
             {/* Subagent Tree Panel - shown on right side when toggled with 'T' key */}
             {subagentPanelVisible && (
               <SubagentTreePanel
