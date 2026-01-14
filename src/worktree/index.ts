@@ -345,6 +345,7 @@ export class WorktreeManager {
   }
 }
 
-// Re-export types and git operations
+// Re-export types, git operations, and name pool
 export * from './types.js';
 export * from './git.js';
+export * from './names.js';
