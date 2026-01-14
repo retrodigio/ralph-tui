@@ -26,6 +26,7 @@ import type { EpicLoaderMode } from './EpicLoaderOverlay.js';
 import { SubagentTreePanel } from './SubagentTreePanel.js';
 import { WorkerListPanel } from './WorkerListPanel.js';
 import { WorkerPanel } from './WorkerPanel.js';
+import { RefineryPanel } from './RefineryPanel.js';
 import type {
   ExecutionEngine,
   EngineEvent,
@@ -1393,6 +1394,15 @@ export function RunApp({
                 tree={subagentTree}
                 activeSubagentId={focusedSubagentId}
                 width={45}
+              />
+            )}
+            {/* Refinery Panel - shown when 'R' is pressed in parallel mode */}
+            {isParallelMode && showRefinery && (
+              <RefineryPanel
+                queue={_mergeQueue}
+                currentMerge={_currentMerge}
+                stats={_refineryStats}
+                testsStatus="passing"
               />
             )}
           </>
