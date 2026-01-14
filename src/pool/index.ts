@@ -24,6 +24,7 @@ export {
   type SchedulerConfig,
   type TaskAssignment,
 } from './scheduler.js';
+export { PoolRefineryIntegration } from './pool-refinery-integration.js';
 export type {
   WorkerConfig,
   WorkerStatus,
