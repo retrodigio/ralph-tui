@@ -427,6 +427,12 @@ export class BeadsBvTrackerPlugin extends BeadsTrackerPlugin {
         );
       }
 
+      // Exclude specific task IDs (e.g., skipped tasks)
+      if (filter?.excludeIds && filter.excludeIds.length > 0) {
+        const excludeSet = new Set(filter.excludeIds);
+        recommendations = recommendations.filter((rec) => !excludeSet.has(rec.id));
+      }
+
       // Return the top recommendation
       if (recommendations.length === 0) {
         return undefined;

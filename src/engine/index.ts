@@ -430,25 +430,15 @@ export class ExecutionEngine {
   }
 
   /**
-   * Get the next available task, excluding skipped ones
+   * Get the next available task, excluding skipped ones.
+   * Delegates to tracker.getNextTask() for smart task selection (e.g., bv PageRank).
    */
   private async getNextAvailableTask(): Promise<TrackerTask | null> {
-    const tasks = await this.tracker!.getTasks({ status: ['open', 'in_progress'] });
-
-    for (const task of tasks) {
-      // Skip tasks that have been marked as skipped
-      if (this.skippedTasks.has(task.id)) {
-        continue;
-      }
-
-      // Check if task is ready (no unresolved dependencies)
-      const isReady = await this.tracker!.isTaskReady(task.id);
-      if (isReady) {
-        return task;
-      }
-    }
-
-    return null;
+    // Use tracker's getNextTask for smart selection (bv integration, priority sorting, etc.)
+    // Pass skipped task IDs to exclude them from consideration
+    const excludeIds = [...this.skippedTasks];
+    const task = await this.tracker!.getNextTask({ excludeIds });
+    return task ?? null;
   }
 
   /**

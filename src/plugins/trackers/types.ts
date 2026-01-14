@@ -171,6 +171,9 @@ export interface TaskFilter {
   /** Only include tasks that are ready (no unresolved dependencies) */
   ready?: boolean;
 
+  /** Exclude tasks with these IDs (useful for skipping tasks) */
+  excludeIds?: string[];
+
   /** Maximum number of tasks to return */
   limit?: number;
 
