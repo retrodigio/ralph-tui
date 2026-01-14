@@ -63,6 +63,62 @@ export interface NotificationsConfig {
 }
 
 /**
+ * Pool execution mode for parallel workers.
+ * - 'single': Traditional single-worker mode (default)
+ * - 'parallel': Multiple workers with worktree isolation
+ */
+export type PoolMode = 'single' | 'parallel';
+
+/**
+ * Pool scheduling configuration for parallel mode.
+ */
+export interface PoolSchedulingConfig {
+  /** Only run tasks with merged dependencies (default: true) */
+  strictDependencies?: boolean;
+  /** Use bv --robot-plan for track detection (default: true) */
+  useParallelTracks?: boolean;
+}
+
+/**
+ * Pool configuration for parallel worker mode.
+ */
+export interface PoolConfig {
+  /** Pool execution mode - single or parallel (default: 'single') */
+  mode?: PoolMode;
+  /** Maximum number of parallel workers (default: 3) */
+  maxWorkers?: number;
+  /** Directory for git worktrees (default: '.ralph-workers') */
+  worktreeDir?: string;
+  /** Scheduling configuration */
+  scheduling?: PoolSchedulingConfig;
+}
+
+/**
+ * Conflict handling strategy for the refinery.
+ * - 'rebase': Automatically rebase conflicting branches
+ * - 'escalate': Pause and notify user to resolve manually
+ */
+export type RefineryConflictStrategy = 'rebase' | 'escalate';
+
+/**
+ * Refinery configuration for merge operations in parallel mode.
+ */
+export interface RefineryConfig {
+  /** Target branch for merges (default: 'main') */
+  targetBranch?: string;
+  /** Whether to run tests before merging (default: true) */
+  runTests?: boolean;
+  /** Command to run for testing */
+  testCommand?: string;
+  /** Strategy for handling merge conflicts (default: 'rebase') */
+  onConflict?: RefineryConflictStrategy;
+  /** Whether to delete worker branches after successful merge (default: true) */
+  deleteAfterMerge?: boolean;
+  /** Number of times to retry flaky tests (default: 2) */
+  retryFlakyTests?: number;
+}
+
+/**
  * Runtime options that can be passed via CLI flags
  */
 export interface RuntimeOptions {
@@ -181,6 +237,12 @@ export interface StoredConfig {
 
   /** Notifications configuration */
   notifications?: NotificationsConfig;
+
+  /** Pool configuration for parallel worker mode */
+  pool?: PoolConfig;
+
+  /** Refinery configuration for merge operations */
+  refinery?: RefineryConfig;
 }
 
 /**

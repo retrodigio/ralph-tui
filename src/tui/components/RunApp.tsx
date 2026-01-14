@@ -382,9 +382,8 @@ export function RunApp({
   const [subagentPanelVisible, setSubagentPanelVisible] = useState(initialSubagentPanelVisible);
 
   // Parallel mode state management
-  // These are used when parallel workers are active (controlled by engine.isParallelMode)
-  // For now, parallel mode is always false until the parallel workers infrastructure is built
-  const isParallelMode = false; // TODO: Get from engine when parallel mode is implemented
+  // Parallel mode is enabled via pool.mode = 'parallel' in config
+  const isParallelMode = storedConfig?.pool?.mode === 'parallel';
   const [showWorkerList, setShowWorkerList] = useState(true); // Toggle worker list / detail view
   const [showRefinery, setShowRefinery] = useState(false); // Toggle refinery panel visibility
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null); // Selected worker by number
