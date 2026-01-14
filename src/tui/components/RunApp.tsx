@@ -397,6 +397,7 @@ export function RunApp({
   const [_workersPaused, setWorkersPaused] = useState(false); // Track pause state for all workers
   const [showWorkerOutput, setShowWorkerOutput] = useState(true); // Toggle output section in WorkerPanel
   const [showWorkerSubagents, setShowWorkerSubagents] = useState(true); // Toggle subagents section in WorkerPanel
+  const [parallelModeStatusMessage, setParallelModeStatusMessage] = useState<string | null>(null); // Status message for parallel mode actions
 
   // Mock parallel mode data (until WorkerPool is integrated)
   const [workers] = useState<Map<string, WorkerState>>(() => {
@@ -947,11 +948,15 @@ export function RunApp({
           const isMinus = key.name === '-' || key.name === '_';
 
           if (isParallelMode) {
-            // Parallel mode: spawn/reduce workers
+            // Parallel mode: spawn/reduce workers (mock feedback until WorkerPool is implemented)
             if (isPlus) {
               // TODO: Call engine.spawnWorker() when WorkerPool is implemented
+              setParallelModeStatusMessage('Worker spawn requested (pending WorkerPool)');
+              setTimeout(() => setParallelModeStatusMessage(null), 2000);
             } else if (isMinus) {
               // TODO: Call engine.reduceMaxWorkers() when WorkerPool is implemented
+              setParallelModeStatusMessage('Worker reduction requested (pending WorkerPool)');
+              setTimeout(() => setParallelModeStatusMessage(null), 2000);
             }
           } else {
             // Single mode: add/remove 10 iterations
@@ -1086,8 +1091,12 @@ export function RunApp({
         case '9':
           // Select worker by number (parallel mode only)
           if (isParallelMode) {
-            // TODO: Map number to actual worker ID when WorkerPool is implemented
-            setSelectedWorker(`worker-${key.name}`);
+            // Map number to actual worker ID from the workers Map
+            const workerIndex = parseInt(key.name, 10) - 1;
+            const workerIds = Array.from(workers.keys());
+            if (workerIndex >= 0 && workerIndex < workerIds.length) {
+              setSelectedWorker(workerIds[workerIndex]!);
+            }
           }
           break;
 
@@ -1095,6 +1104,8 @@ export function RunApp({
           // Force merge next in queue (parallel mode only)
           if (isParallelMode) {
             // TODO: Call engine.forceMerge() when Refinery is implemented
+            setParallelModeStatusMessage('Merge requested (pending Refinery)');
+            setTimeout(() => setParallelModeStatusMessage(null), 2000);
           }
           break;
       }
@@ -1441,7 +1452,7 @@ export function RunApp({
       </box>
 
       {/* Footer */}
-      {isParallelMode ? <ParallelModeFooter /> : <Footer />}
+      {isParallelMode ? <ParallelModeFooter isPaused={_workersPaused} statusMessage={parallelModeStatusMessage} /> : <Footer />}
 
       {/* Interrupt Confirmation Dialog */}
       <ConfirmationDialog

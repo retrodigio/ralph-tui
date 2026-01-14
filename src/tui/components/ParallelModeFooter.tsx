@@ -13,13 +13,15 @@ import { colors, parallelModeKeyboardShortcuts, layout } from '../theme.js';
 export interface ParallelModeFooterProps {
   /** Whether pause mode is active (changes [p] display) */
   isPaused?: boolean;
+  /** Optional status message to display (e.g., feedback for pending actions) */
+  statusMessage?: string | null;
 }
 
 /**
  * Parallel mode footer component showing keyboard shortcuts.
  * Uses the parallelModeKeyboardShortcuts from theme.
  */
-export function ParallelModeFooter({ isPaused = false }: ParallelModeFooterProps): ReactNode {
+export function ParallelModeFooter({ isPaused = false, statusMessage }: ParallelModeFooterProps): ReactNode {
   // Format keyboard shortcuts as a single string
   // Adjust the 'p' shortcut based on pause state
   const shortcutText = parallelModeKeyboardShortcuts
@@ -37,7 +39,7 @@ export function ParallelModeFooter({ isPaused = false }: ParallelModeFooterProps
         width: '100%',
         height: layout.footer.height,
         flexDirection: 'row',
-        justifyContent: 'flex-start',
+        justifyContent: 'space-between',
         alignItems: 'center',
         backgroundColor: colors.bg.secondary,
         paddingLeft: 1,
@@ -50,6 +52,12 @@ export function ParallelModeFooter({ isPaused = false }: ParallelModeFooterProps
       <box style={{ flexShrink: 1, overflow: 'hidden' }}>
         <text fg={colors.fg.muted}>{shortcutText}</text>
       </box>
+      {/* Status message when present */}
+      {statusMessage && (
+        <box style={{ flexShrink: 0, marginLeft: 2 }}>
+          <text fg={colors.status.warning}>{statusMessage}</text>
+        </box>
+      )}
     </box>
   );
 }
