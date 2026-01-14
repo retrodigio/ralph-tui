@@ -369,7 +369,9 @@ export type {
 export {
   hasPersistedSession,
   loadPersistedSession,
+  loadAnyPersistedSession,
   savePersistedSession,
+  saveAnyPersistedSession,
   deletePersistedSession,
   createPersistedSession,
   updateSessionAfterIteration,
@@ -386,6 +388,24 @@ export {
   isSessionResumable,
   getSessionSummary,
   detectAndRecoverStaleSession,
+  // V2 parallel mode exports
+  isParallelSession,
+  isSingleSession,
+  createParallelSession,
+  updateWorkerState,
+  removeWorker,
+  addMergeRequest,
+  updateMergeRequestStatus,
+  removeMergeRequest,
+  markTaskCompleted,
+  markTaskConflict,
+  clearTaskConflict,
+  updateRateLimitState,
+  incrementGlobalIteration,
+  isParallelSessionResumable,
+  getParallelSessionSummary,
+  recoverParallelSession,
+  detectAndRecoverStaleParallelSession,
 } from './persistence.js';
 
 export type {
@@ -394,6 +414,17 @@ export type {
   PersistedSessionState,
   PersistedIterationResult,
   StaleSessionRecoveryResult,
+  // V2 parallel mode type exports
+  SessionMode,
+  PersistedWorkerState,
+  PersistedMergeRequest,
+  PersistedRateLimitState,
+  PersistedPoolState,
+  PersistedSessionStateV2,
+  AnyPersistedSessionState,
+  CreateParallelSessionOptions,
+  ParallelSessionSummary,
+  ParallelSessionRecoveryResult,
 } from './persistence.js';
 
 // Re-export lock module with single instance support

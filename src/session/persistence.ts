@@ -2,6 +2,7 @@
  * ABOUTME: Session persistence for Ralph TUI.
  * Handles saving and loading full session state including task statuses,
  * iteration history, and tracker state to .ralph-tui/session.json.
+ * Supports both single-worker (v1) and parallel-worker (v2) session formats.
  */
 
 import { join, dirname } from 'node:path';
@@ -16,6 +17,8 @@ import {
 import type { TrackerTask, TrackerTaskStatus } from '../plugins/trackers/types.js';
 import type { IterationResult } from '../engine/types.js';
 import type { SessionStatus } from './types.js';
+import type { MergeRequestStatus } from '../refinery/types.js';
+import type { WorkerStatus } from '../pool/types.js';
 
 /**
  * Session file path relative to cwd (inside .ralph-tui directory)
@@ -151,6 +154,139 @@ export interface PersistedIterationResult {
   endedAt: string;
 }
 
+// =============================================================================
+// Version 2: Parallel Mode Session Types
+// =============================================================================
+
+/**
+ * Session mode indicator
+ */
+export type SessionMode = 'single' | 'parallel';
+
+/**
+ * Persisted state of a worker in parallel mode
+ */
+export interface PersistedWorkerState {
+  /** Task ID currently assigned (null if idle) */
+  taskId: string | null;
+  /** Task title for display */
+  taskTitle?: string;
+  /** Current iteration number for this task */
+  iteration: number;
+  /** Worker status */
+  status: WorkerStatus;
+  /** Agent being used by this worker */
+  agent: string;
+  /** Worktree path for this worker */
+  worktreePath: string;
+  /** Branch name for this worker */
+  branch: string;
+  /** When work started on current task (ISO 8601) */
+  startedAt?: string;
+  /** Error message if status is 'error' */
+  error?: string;
+}
+
+/**
+ * Persisted merge request in the queue
+ */
+export interface PersistedMergeRequest {
+  /** Unique identifier */
+  id: string;
+  /** Branch to merge */
+  branch: string;
+  /** Worker name that completed the task */
+  workerName: string;
+  /** Task ID associated with this merge */
+  taskId: string;
+  /** Priority level (P0-P4) */
+  priority: number;
+  /** Number of tasks this unblocks */
+  unblockCount: number;
+  /** When request was created (ISO 8601) */
+  createdAt: string;
+  /** Current status */
+  status: MergeRequestStatus;
+  /** Retry count */
+  retryCount: number;
+  /** Error message if failed/conflict */
+  error?: string;
+}
+
+/**
+ * Rate limit state for an agent
+ */
+export interface PersistedRateLimitState {
+  /** Whether agent is available or limited */
+  status: 'available' | 'limited';
+  /** When the agent was limited (ISO 8601) */
+  limitedAt?: string;
+  /** When to retry (ISO 8601) */
+  retryAfter?: string;
+  /** Consecutive limit count */
+  consecutiveLimits: number;
+}
+
+/**
+ * Pool state for parallel mode sessions (version 2)
+ */
+export interface PersistedPoolState {
+  /** Per-worker state, keyed by worker name */
+  workers: Record<string, PersistedWorkerState>;
+  /** Merge queue state */
+  mergeQueue: PersistedMergeRequest[];
+  /** Task IDs that have been completed */
+  completedTasks: string[];
+  /** Task IDs that have conflicts awaiting resolution */
+  conflictTasks: string[];
+  /** Rate limit state per agent */
+  rateLimitState: Record<string, PersistedRateLimitState>;
+  /** Maximum parallel workers configured */
+  maxWorkers: number;
+  /** Fallback agent chain */
+  fallbackChain: string[];
+}
+
+/**
+ * Version 2 session state (parallel mode).
+ * Backward compatible with version 1.
+ */
+export interface PersistedSessionStateV2 extends Omit<PersistedSessionState, 'version'> {
+  /** Schema version for forward compatibility */
+  version: 2;
+
+  /** Session mode: 'single' or 'parallel' */
+  mode: SessionMode;
+
+  /** Pool state (only present in parallel mode) */
+  pool?: PersistedPoolState;
+
+  /** Global iteration counter (sum across all workers in parallel mode) */
+  globalIteration?: number;
+}
+
+/**
+ * Union type for all session versions.
+ * Use isParallelSession() to check mode.
+ */
+export type AnyPersistedSessionState = PersistedSessionState | PersistedSessionStateV2;
+
+/**
+ * Type guard to check if session is parallel mode (v2)
+ */
+export function isParallelSession(
+  state: AnyPersistedSessionState
+): state is PersistedSessionStateV2 {
+  return state.version === 2 && (state as PersistedSessionStateV2).mode === 'parallel';
+}
+
+/**
+ * Type guard to check if session is single mode (v1 or v2 single)
+ */
+export function isSingleSession(state: AnyPersistedSessionState): boolean {
+  return state.version === 1 || (state as PersistedSessionStateV2).mode === 'single';
+}
+
 /**
  * Get the session file path
  */
@@ -210,11 +346,63 @@ function validateLoadedSession(parsed: unknown): string | null {
 }
 
 /**
- * Load persisted session state
+ * Load persisted session state (v1 format only).
+ * For loading any version, use loadAnyPersistedSession().
  */
 export async function loadPersistedSession(
   cwd: string
 ): Promise<PersistedSessionState | null> {
+  const session = await loadAnyPersistedSession(cwd);
+  if (!session) {
+    return null;
+  }
+
+  // For backward compatibility, only return v1 sessions
+  if (session.version === 2) {
+    // Convert v2 single-mode session to v1 format for compatibility
+    if ((session as PersistedSessionStateV2).mode === 'single') {
+      // Create a clean v1 session without v2-specific fields
+      const v2Session = session as PersistedSessionStateV2;
+      const v1Session: PersistedSessionState = {
+        version: 1,
+        sessionId: v2Session.sessionId,
+        status: v2Session.status,
+        startedAt: v2Session.startedAt,
+        updatedAt: v2Session.updatedAt,
+        pausedAt: v2Session.pausedAt,
+        currentIteration: v2Session.currentIteration,
+        maxIterations: v2Session.maxIterations,
+        tasksCompleted: v2Session.tasksCompleted,
+        isPaused: v2Session.isPaused,
+        agentPlugin: v2Session.agentPlugin,
+        model: v2Session.model,
+        trackerState: v2Session.trackerState,
+        iterations: v2Session.iterations,
+        skippedTaskIds: v2Session.skippedTaskIds,
+        cwd: v2Session.cwd,
+        activeTaskIds: v2Session.activeTaskIds,
+        subagentPanelVisible: v2Session.subagentPanelVisible,
+      };
+      return v1Session;
+    }
+    // Parallel mode sessions cannot be returned as v1
+    console.warn(
+      'Session is in parallel mode (v2) but caller requested v1. ' +
+        'Use loadAnyPersistedSession() for parallel sessions.'
+    );
+    return null;
+  }
+
+  return session as PersistedSessionState;
+}
+
+/**
+ * Load persisted session state (any version).
+ * Handles both v1 (single worker) and v2 (parallel mode) sessions.
+ */
+export async function loadAnyPersistedSession(
+  cwd: string
+): Promise<AnyPersistedSessionState | null> {
   const filePath = getSessionFilePath(cwd);
 
   try {
@@ -231,22 +419,36 @@ export async function loadPersistedSession(
       return null;
     }
 
-    const session = parsed as PersistedSessionState;
+    // Detect version
+    const version = (parsed as Record<string, unknown>).version ?? 1;
 
-    // Validate schema version
-    // Treat undefined as version 1 (backward compatible with pre-versioning files)
-    const version = session.version ?? 1;
-    if (version !== 1) {
+    if (version === 1) {
+      const session = parsed as PersistedSessionState;
+      // Ensure version field is set for future saves
+      session.version = 1;
+      return session;
+    } else if (version === 2) {
+      const session = parsed as PersistedSessionStateV2;
+      // Validate v2-specific fields
+      const v2Error = validateV2Session(session);
+      if (v2Error) {
+        console.warn(
+          `Invalid v2 session file: ${v2Error}. ` +
+            'Delete .ralph-tui/session.json to start fresh.'
+        );
+        return null;
+      }
+      return session;
+    } else {
       console.warn(
         `Unknown session file version: ${version}. ` +
           'Session may not load correctly.'
       );
+      // Try loading as v1 for forward compatibility
+      const session = parsed as PersistedSessionState;
+      session.version = 1;
+      return session;
     }
-
-    // Ensure version field is set for future saves
-    session.version = 1;
-
-    return session;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return null;
@@ -256,10 +458,45 @@ export async function loadPersistedSession(
 }
 
 /**
- * Save persisted session state
+ * Validate v2-specific session fields.
+ * Returns null if valid, or an error message if invalid.
+ */
+function validateV2Session(session: PersistedSessionStateV2): string | null {
+  if (session.mode !== 'single' && session.mode !== 'parallel') {
+    return 'Invalid or missing mode field';
+  }
+
+  if (session.mode === 'parallel') {
+    if (!session.pool) {
+      return 'Parallel mode session missing pool state';
+    }
+    if (typeof session.pool.workers !== 'object') {
+      return 'Invalid pool.workers';
+    }
+    if (!Array.isArray(session.pool.mergeQueue)) {
+      return 'Invalid pool.mergeQueue';
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Save persisted session state (v1 format).
+ * For v2 sessions, use saveAnyPersistedSession().
  */
 export async function savePersistedSession(
   state: PersistedSessionState
+): Promise<void> {
+  await saveAnyPersistedSession(state);
+}
+
+/**
+ * Save persisted session state (any version).
+ * Handles both v1 and v2 session formats.
+ */
+export async function saveAnyPersistedSession(
+  state: AnyPersistedSessionState
 ): Promise<void> {
   const filePath = getSessionFilePath(state.cwd);
 
@@ -267,7 +504,7 @@ export async function savePersistedSession(
   await mkdir(dirname(filePath), { recursive: true });
 
   // Update timestamp
-  const updatedState: PersistedSessionState = {
+  const updatedState: AnyPersistedSessionState = {
     ...state,
     updatedAt: new Date().toISOString(),
   };
@@ -665,4 +902,555 @@ export function getSessionSummary(state: PersistedSessionState): {
     epicId: trackerState.epicId,
     prdPath: trackerState.prdPath,
   };
+}
+
+// =============================================================================
+// Version 2: Parallel Mode Session Functions
+// =============================================================================
+
+/**
+ * Options for creating a parallel mode session
+ */
+export interface CreateParallelSessionOptions {
+  sessionId: string;
+  agentPlugin: string;
+  model?: string;
+  trackerPlugin: string;
+  epicId?: string;
+  prdPath?: string;
+  maxIterations: number;
+  tasks: TrackerTask[];
+  cwd: string;
+  maxWorkers: number;
+  fallbackChain: string[];
+}
+
+/**
+ * Create a new parallel mode session (v2).
+ */
+export function createParallelSession(
+  options: CreateParallelSessionOptions
+): PersistedSessionStateV2 {
+  const now = new Date().toISOString();
+
+  // Initialize rate limit state for all agents in fallback chain
+  const rateLimitState: Record<string, PersistedRateLimitState> = {};
+  for (const agent of options.fallbackChain) {
+    rateLimitState[agent] = {
+      status: 'available',
+      consecutiveLimits: 0,
+    };
+  }
+
+  return {
+    version: 2,
+    mode: 'parallel',
+    sessionId: options.sessionId,
+    status: 'running',
+    startedAt: now,
+    updatedAt: now,
+    currentIteration: 0,
+    globalIteration: 0,
+    maxIterations: options.maxIterations,
+    tasksCompleted: 0,
+    isPaused: false,
+    agentPlugin: options.agentPlugin,
+    model: options.model,
+    trackerState: {
+      plugin: options.trackerPlugin,
+      epicId: options.epicId,
+      prdPath: options.prdPath,
+      totalTasks: options.tasks.length,
+      tasks: options.tasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        completedInSession: false,
+      })),
+    },
+    iterations: [],
+    skippedTaskIds: [],
+    cwd: options.cwd,
+    activeTaskIds: [],
+    subagentPanelVisible: false,
+    pool: {
+      workers: {},
+      mergeQueue: [],
+      completedTasks: [],
+      conflictTasks: [],
+      rateLimitState,
+      maxWorkers: options.maxWorkers,
+      fallbackChain: options.fallbackChain,
+    },
+  };
+}
+
+/**
+ * Update worker state in a parallel session.
+ */
+export function updateWorkerState(
+  state: PersistedSessionStateV2,
+  workerName: string,
+  workerState: PersistedWorkerState
+): PersistedSessionStateV2 {
+  if (!state.pool) {
+    throw new Error('Cannot update worker state on non-parallel session');
+  }
+
+  return {
+    ...state,
+    pool: {
+      ...state.pool,
+      workers: {
+        ...state.pool.workers,
+        [workerName]: workerState,
+      },
+    },
+  };
+}
+
+/**
+ * Remove a worker from a parallel session.
+ */
+export function removeWorker(
+  state: PersistedSessionStateV2,
+  workerName: string
+): PersistedSessionStateV2 {
+  if (!state.pool) {
+    throw new Error('Cannot remove worker from non-parallel session');
+  }
+
+  const { [workerName]: _, ...remainingWorkers } = state.pool.workers;
+
+  return {
+    ...state,
+    pool: {
+      ...state.pool,
+      workers: remainingWorkers,
+    },
+  };
+}
+
+/**
+ * Add a merge request to the queue.
+ */
+export function addMergeRequest(
+  state: PersistedSessionStateV2,
+  request: PersistedMergeRequest
+): PersistedSessionStateV2 {
+  if (!state.pool) {
+    throw new Error('Cannot add merge request to non-parallel session');
+  }
+
+  return {
+    ...state,
+    pool: {
+      ...state.pool,
+      mergeQueue: [...state.pool.mergeQueue, request],
+    },
+  };
+}
+
+/**
+ * Update a merge request's status in the queue.
+ */
+export function updateMergeRequestStatus(
+  state: PersistedSessionStateV2,
+  requestId: string,
+  status: MergeRequestStatus,
+  error?: string
+): PersistedSessionStateV2 {
+  if (!state.pool) {
+    throw new Error('Cannot update merge request in non-parallel session');
+  }
+
+  const updatedQueue = state.pool.mergeQueue.map((req) => {
+    if (req.id === requestId) {
+      return {
+        ...req,
+        status,
+        error,
+        retryCount: status === 'conflict' || status === 'failed'
+          ? req.retryCount + 1
+          : req.retryCount,
+      };
+    }
+    return req;
+  });
+
+  return {
+    ...state,
+    pool: {
+      ...state.pool,
+      mergeQueue: updatedQueue,
+    },
+  };
+}
+
+/**
+ * Remove a merge request from the queue.
+ */
+export function removeMergeRequest(
+  state: PersistedSessionStateV2,
+  requestId: string
+): PersistedSessionStateV2 {
+  if (!state.pool) {
+    throw new Error('Cannot remove merge request from non-parallel session');
+  }
+
+  return {
+    ...state,
+    pool: {
+      ...state.pool,
+      mergeQueue: state.pool.mergeQueue.filter((req) => req.id !== requestId),
+    },
+  };
+}
+
+/**
+ * Mark a task as completed in the pool.
+ */
+export function markTaskCompleted(
+  state: PersistedSessionStateV2,
+  taskId: string
+): PersistedSessionStateV2 {
+  if (!state.pool) {
+    throw new Error('Cannot mark task completed in non-parallel session');
+  }
+
+  if (state.pool.completedTasks.includes(taskId)) {
+    return state;
+  }
+
+  // Update tracker state task status
+  const updatedTasks = state.trackerState.tasks.map((task) => {
+    if (task.id === taskId) {
+      return {
+        ...task,
+        status: 'completed' as TrackerTaskStatus,
+        completedInSession: true,
+      };
+    }
+    return task;
+  });
+
+  return {
+    ...state,
+    tasksCompleted: state.tasksCompleted + 1,
+    trackerState: {
+      ...state.trackerState,
+      tasks: updatedTasks,
+    },
+    pool: {
+      ...state.pool,
+      completedTasks: [...state.pool.completedTasks, taskId],
+    },
+  };
+}
+
+/**
+ * Mark a task as having a conflict.
+ */
+export function markTaskConflict(
+  state: PersistedSessionStateV2,
+  taskId: string
+): PersistedSessionStateV2 {
+  if (!state.pool) {
+    throw new Error('Cannot mark task conflict in non-parallel session');
+  }
+
+  if (state.pool.conflictTasks.includes(taskId)) {
+    return state;
+  }
+
+  return {
+    ...state,
+    pool: {
+      ...state.pool,
+      conflictTasks: [...state.pool.conflictTasks, taskId],
+    },
+  };
+}
+
+/**
+ * Clear a task's conflict status.
+ */
+export function clearTaskConflict(
+  state: PersistedSessionStateV2,
+  taskId: string
+): PersistedSessionStateV2 {
+  if (!state.pool) {
+    throw new Error('Cannot clear task conflict in non-parallel session');
+  }
+
+  return {
+    ...state,
+    pool: {
+      ...state.pool,
+      conflictTasks: state.pool.conflictTasks.filter((id) => id !== taskId),
+    },
+  };
+}
+
+/**
+ * Update rate limit state for an agent.
+ */
+export function updateRateLimitState(
+  state: PersistedSessionStateV2,
+  agent: string,
+  rateLimitState: PersistedRateLimitState
+): PersistedSessionStateV2 {
+  if (!state.pool) {
+    throw new Error('Cannot update rate limit state in non-parallel session');
+  }
+
+  return {
+    ...state,
+    pool: {
+      ...state.pool,
+      rateLimitState: {
+        ...state.pool.rateLimitState,
+        [agent]: rateLimitState,
+      },
+    },
+  };
+}
+
+/**
+ * Increment the global iteration counter.
+ */
+export function incrementGlobalIteration(
+  state: PersistedSessionStateV2
+): PersistedSessionStateV2 {
+  return {
+    ...state,
+    globalIteration: (state.globalIteration ?? 0) + 1,
+  };
+}
+
+/**
+ * Check if a parallel session is resumable.
+ */
+export function isParallelSessionResumable(
+  state: PersistedSessionStateV2
+): boolean {
+  return isSessionResumable(state as unknown as PersistedSessionState);
+}
+
+/**
+ * Get parallel session summary for display.
+ */
+export interface ParallelSessionSummary {
+  sessionId: string;
+  status: SessionStatus;
+  mode: SessionMode;
+  startedAt: string;
+  updatedAt: string;
+  globalIteration: number;
+  maxIterations: number;
+  tasksCompleted: number;
+  totalTasks: number;
+  activeWorkers: number;
+  maxWorkers: number;
+  pendingMerges: number;
+  conflictTasks: number;
+  isPaused: boolean;
+  isResumable: boolean;
+  agentPlugin: string;
+  trackerPlugin: string;
+  epicId?: string;
+  prdPath?: string;
+}
+
+/**
+ * Get summary of a parallel session for display.
+ */
+export function getParallelSessionSummary(
+  state: PersistedSessionStateV2
+): ParallelSessionSummary {
+  const trackerState = state.trackerState ?? {
+    plugin: 'unknown',
+    totalTasks: 0,
+    tasks: [],
+  };
+
+  const pool = state.pool ?? {
+    workers: {},
+    mergeQueue: [],
+    completedTasks: [],
+    conflictTasks: [],
+    rateLimitState: {},
+    maxWorkers: 1,
+    fallbackChain: [],
+  };
+
+  // Count active workers (not idle, not done, not error)
+  const activeWorkers = Object.values(pool.workers).filter(
+    (w) => w.status === 'working' || w.status === 'rate-limited'
+  ).length;
+
+  // Count pending merges (queued or merging)
+  const pendingMerges = pool.mergeQueue.filter(
+    (m) => m.status === 'queued' || m.status === 'merging'
+  ).length;
+
+  return {
+    sessionId: state.sessionId,
+    status: state.status,
+    mode: state.mode,
+    startedAt: state.startedAt,
+    updatedAt: state.updatedAt,
+    globalIteration: state.globalIteration ?? 0,
+    maxIterations: state.maxIterations,
+    tasksCompleted: state.tasksCompleted,
+    totalTasks: trackerState.totalTasks ?? 0,
+    activeWorkers,
+    maxWorkers: pool.maxWorkers,
+    pendingMerges,
+    conflictTasks: pool.conflictTasks.length,
+    isPaused: state.isPaused,
+    isResumable: isParallelSessionResumable(state),
+    agentPlugin: state.agentPlugin,
+    trackerPlugin: trackerState.plugin ?? 'unknown',
+    epicId: trackerState.epicId,
+    prdPath: trackerState.prdPath,
+  };
+}
+
+// =============================================================================
+// Crash Recovery for Parallel Sessions
+// =============================================================================
+
+/**
+ * Result of parallel session crash recovery
+ */
+export interface ParallelSessionRecoveryResult {
+  /** Whether recovery was performed */
+  wasRecovered: boolean;
+  /** Previous session status */
+  previousStatus?: SessionStatus;
+  /** Workers that were active and cleared */
+  recoveredWorkers: string[];
+  /** Merge requests that were in progress and reset */
+  resetMerges: string[];
+  /** Active task IDs that were cleared */
+  clearedActiveTasks: string[];
+}
+
+/**
+ * Recover a crashed parallel session.
+ *
+ * Actions:
+ * 1. Clear all active workers (they'll need to be recreated with fresh worktrees)
+ * 2. Reset any 'merging' merge requests back to 'queued'
+ * 3. Clear active task IDs
+ * 4. Set status to 'interrupted'
+ *
+ * @param state The session state to recover
+ * @returns Recovered session state and recovery info
+ */
+export function recoverParallelSession(
+  state: PersistedSessionStateV2
+): { state: PersistedSessionStateV2; result: ParallelSessionRecoveryResult } {
+  const result: ParallelSessionRecoveryResult = {
+    wasRecovered: false,
+    recoveredWorkers: [],
+    resetMerges: [],
+    clearedActiveTasks: [],
+  };
+
+  if (state.status !== 'running') {
+    return { state, result };
+  }
+
+  if (!state.pool) {
+    return { state, result };
+  }
+
+  result.wasRecovered = true;
+  result.previousStatus = state.status;
+  result.recoveredWorkers = Object.keys(state.pool.workers);
+  result.clearedActiveTasks = [...(state.activeTaskIds ?? [])];
+
+  // Reset any 'merging' merge requests back to 'queued'
+  const updatedMergeQueue = state.pool.mergeQueue.map((req) => {
+    if (req.status === 'merging') {
+      result.resetMerges.push(req.id);
+      return { ...req, status: 'queued' as MergeRequestStatus };
+    }
+    return req;
+  });
+
+  const recoveredState: PersistedSessionStateV2 = {
+    ...state,
+    status: 'interrupted',
+    activeTaskIds: [],
+    updatedAt: new Date().toISOString(),
+    pool: {
+      ...state.pool,
+      // Clear all workers - they'll be recreated on resume
+      workers: {},
+      mergeQueue: updatedMergeQueue,
+    },
+  };
+
+  return { state: recoveredState, result };
+}
+
+/**
+ * Detect and recover from a stale parallel session.
+ *
+ * @param cwd Working directory
+ * @param checkLock Function to check lock status
+ * @returns Recovery result
+ */
+export async function detectAndRecoverStaleParallelSession(
+  cwd: string,
+  checkLock: (cwd: string) => Promise<{ isLocked: boolean; isStale: boolean }>
+): Promise<ParallelSessionRecoveryResult> {
+  const result: ParallelSessionRecoveryResult = {
+    wasRecovered: false,
+    recoveredWorkers: [],
+    resetMerges: [],
+    clearedActiveTasks: [],
+  };
+
+  // Check if session file exists
+  const hasSession = await hasPersistedSession(cwd);
+  if (!hasSession) {
+    return result;
+  }
+
+  // Load session as any version
+  const session = await loadAnyPersistedSession(cwd);
+  if (!session) {
+    return result;
+  }
+
+  // Only recover parallel sessions with this function
+  if (!isParallelSession(session)) {
+    return result;
+  }
+
+  // Only recover if status is 'running' (indicates crash)
+  if (session.status !== 'running') {
+    return result;
+  }
+
+  // Check if lock is stale
+  const lockStatus = await checkLock(cwd);
+
+  // If lock is valid, don't recover
+  if (lockStatus.isLocked && !lockStatus.isStale) {
+    return result;
+  }
+
+  // Session is stale - recover it
+  const { state: recoveredState, result: recoveryResult } =
+    recoverParallelSession(session);
+
+  // Save recovered session
+  await saveAnyPersistedSession(recoveredState);
+
+  return recoveryResult;
 }
