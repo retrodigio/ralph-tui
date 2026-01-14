@@ -38,6 +38,9 @@ import type { TrackerPluginMeta } from '../../plugins/trackers/types.js';
 import { getIterationLogsByTask } from '../../logs/index.js';
 import type { SubagentTraceStats, SubagentHierarchyNode } from '../../logs/types.js';
 import { StreamingOutputParser } from '../output-parser.js';
+import type { WorkerState } from '../../pool/types.js';
+import type { MergeRequest } from '../../refinery/types.js';
+import type { RefineryStats } from './RefineryPanel.js';
 
 /**
  * View modes for the RunApp component
@@ -389,6 +392,85 @@ export function RunApp({
   const [showRefinery, setShowRefinery] = useState(false); // Toggle refinery panel visibility
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null); // Selected worker by number
   const [_workersPaused, setWorkersPaused] = useState(false); // Track pause state for all workers
+
+  // Mock parallel mode data (until WorkerPool is integrated)
+  const [_workers] = useState<Map<string, WorkerState>>(() => {
+    const mockWorkers = new Map<string, WorkerState>();
+    mockWorkers.set('nebula', {
+      status: 'working',
+      task: { id: 'task-1', title: 'Implement user authentication', status: 'in_progress', priority: 2, labels: [], dependsOn: [], blocks: [] },
+      iteration: 3,
+      startedAt: new Date(Date.now() - 120000),
+      agent: 'claude',
+      output: 'Working on authentication module...',
+      subagents: [],
+      paused: false,
+    });
+    mockWorkers.set('phoenix', {
+      status: 'idle',
+      task: null,
+      iteration: 0,
+      startedAt: null,
+      agent: 'claude',
+      output: '',
+      subagents: [],
+      paused: false,
+    });
+    mockWorkers.set('atlas', {
+      status: 'rate-limited',
+      task: { id: 'task-2', title: 'Add database migrations', status: 'in_progress', priority: 1, labels: [], dependsOn: [], blocks: [] },
+      iteration: 5,
+      startedAt: new Date(Date.now() - 300000),
+      agent: 'claude',
+      output: 'Rate limited, waiting...',
+      subagents: [],
+      paused: false,
+    });
+    return mockWorkers;
+  });
+
+  const [_mergeQueue] = useState<MergeRequest[]>(() => [
+    {
+      id: 'mr-1',
+      branch: 'work/nebula/task-abc',
+      workerName: 'nebula',
+      taskId: 'task-abc',
+      priority: 1,
+      unblockCount: 3,
+      createdAt: new Date(Date.now() - 60000),
+      status: 'merging',
+      retryCount: 0,
+    },
+    {
+      id: 'mr-2',
+      branch: 'work/atlas/task-def',
+      workerName: 'atlas',
+      taskId: 'task-def',
+      priority: 2,
+      unblockCount: 1,
+      createdAt: new Date(Date.now() - 30000),
+      status: 'queued',
+      retryCount: 0,
+    },
+  ]);
+
+  const [_refineryStats] = useState<RefineryStats>(() => ({
+    merged: 5,
+    conflicts: 1,
+    failed: 0,
+  }));
+
+  const [_currentMerge] = useState<MergeRequest | null>(() => ({
+    id: 'mr-1',
+    branch: 'work/nebula/task-abc',
+    workerName: 'nebula',
+    taskId: 'task-abc',
+    priority: 1,
+    unblockCount: 3,
+    createdAt: new Date(Date.now() - 60000),
+    status: 'merging',
+    retryCount: 0,
+  }));
 
   // Active agent state from engine - tracks which agent is running and why (primary/fallback)
   const [activeAgentState, setActiveAgentState] = useState<ActiveAgentState | null>(null);
