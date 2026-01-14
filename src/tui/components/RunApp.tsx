@@ -931,7 +931,7 @@ export function RunApp({
           engine.refreshTasks();
           break;
 
-        case 'R':
+        case 'e':
           // Toggle refinery panel (parallel mode only)
           if (isParallelMode) {
             setShowRefinery((prev) => !prev);
