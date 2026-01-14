@@ -1,0 +1,142 @@
+{
+  "index_metadata": {
+    "version": "2.0.0",
+    "last_sync_commit": "48d15b99df484a706d60cb26311058e7ceb1fd3a",
+    "last_sync_timestamp": "2026-01-14T16:50:00Z",
+    "last_analysis_check": "2026-01-14T15:35:00Z",
+    "coverage_metrics": {
+      "total_features": 15,
+      "documented_features": 15,
+      "coverage_percentage": 100,
+      "stale_documents": 0
+    },
+    "sync_history": [
+      {
+        "timestamp": "2026-01-14T15:35:00Z",
+        "commit": "48d15b99df484a706d60cb26311058e7ceb1fd3a",
+        "changes_analyzed": 0,
+        "docs_created": 0,
+        "docs_updated": 0,
+        "docs_deleted": 0,
+        "type": "initial"
+      },
+      {
+        "timestamp": "2026-01-14T16:50:00Z",
+        "commit": "48d15b99df484a706d60cb26311058e7ceb1fd3a",
+        "changes_analyzed": 0,
+        "docs_created": 15,
+        "docs_updated": 0,
+        "docs_deleted": 0,
+        "type": "bulk-generation"
+      }
+    ]
+  },
+  "documents": [
+    {
+      "file": "2026-01-14-execution-engine.md",
+      "feature": "Execution Engine",
+      "size_kb": 27,
+      "created": "2026-01-14",
+      "topics": ["iteration loop", "task selection", "error handling", "rate limits", "agent switching", "events"]
+    },
+    {
+      "file": "2026-01-14-plugin-architecture.md",
+      "feature": "Plugin Architecture",
+      "size_kb": 22,
+      "created": "2026-01-14",
+      "topics": ["agent plugins", "tracker plugins", "registry pattern", "extensibility"]
+    },
+    {
+      "file": "2026-01-14-configuration-system.md",
+      "feature": "Configuration System",
+      "size_kb": 20,
+      "created": "2026-01-14",
+      "topics": ["TOML", "Zod validation", "config merging", "runtime options"]
+    },
+    {
+      "file": "2026-01-14-session-management.md",
+      "feature": "Session Management",
+      "size_kb": 19,
+      "created": "2026-01-14",
+      "topics": ["lock files", "persistence", "resume", "crash recovery"]
+    },
+    {
+      "file": "2026-01-14-rate-limit-handling.md",
+      "feature": "Rate Limit Handling",
+      "size_kb": 20,
+      "created": "2026-01-14",
+      "topics": ["rate detection", "exponential backoff", "fallback agents", "recovery"]
+    },
+    {
+      "file": "2026-01-14-template-system.md",
+      "feature": "Template System",
+      "size_kb": 16,
+      "created": "2026-01-14",
+      "topics": ["Handlebars", "prompt templates", "variable injection", "custom templates"]
+    },
+    {
+      "file": "2026-01-14-tui-components.md",
+      "feature": "TUI Components",
+      "size_kb": 22,
+      "created": "2026-01-14",
+      "topics": ["React", "OpenTUI", "theme system", "keyboard shortcuts", "components"]
+    },
+    {
+      "file": "2026-01-14-prd-system.md",
+      "feature": "PRD System",
+      "size_kb": 21,
+      "created": "2026-01-14",
+      "topics": ["PRD generation", "wizard flow", "markdown parser", "JSON conversion"]
+    },
+    {
+      "file": "2025-01-14-chat-engine.md",
+      "feature": "Chat Engine",
+      "size_kb": 16,
+      "created": "2026-01-14",
+      "topics": ["multi-turn conversations", "history management", "PRD detection", "streaming"]
+    },
+    {
+      "file": "2026-01-14-logging-system.md",
+      "feature": "Logging System",
+      "size_kb": 16,
+      "created": "2026-01-14",
+      "topics": ["iteration logs", "structured logging", "progress tracking", "cleanup"]
+    },
+    {
+      "file": "2026-01-14-subagent-tracing-system.md",
+      "feature": "Subagent Tracing",
+      "size_kb": 18,
+      "created": "2026-01-14",
+      "topics": ["JSONL parser", "lifecycle events", "hierarchy tracking", "Task tool"]
+    },
+    {
+      "file": "2026-01-14-notifications-system.md",
+      "feature": "Notifications",
+      "size_kb": 16,
+      "created": "2026-01-14",
+      "topics": ["desktop notifications", "node-notifier", "sound playback", "cross-platform"]
+    },
+    {
+      "file": "2026-01-14-interruption-handling.md",
+      "feature": "Interruption Handling",
+      "size_kb": 16,
+      "created": "2026-01-14",
+      "topics": ["Ctrl+C handling", "confirmation dialog", "graceful shutdown", "state machine"]
+    },
+    {
+      "file": "2026-01-14-cli-commands.md",
+      "feature": "CLI Commands",
+      "size_kb": 18,
+      "created": "2026-01-14",
+      "topics": ["run", "resume", "status", "logs", "setup", "create-prd", "headless mode"]
+    },
+    {
+      "file": "2026-01-14-setup-wizard.md",
+      "feature": "Setup Wizard",
+      "size_kb": 23,
+      "created": "2026-01-14",
+      "topics": ["interactive setup", "plugin detection", "prompts", "configuration generation"]
+    }
+  ],
+  "pending_work": []
+}
