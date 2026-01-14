@@ -1,10 +1,16 @@
 /**
  * ABOUTME: Barrel export for the merge refinery module.
- * Provides the MergeQueue for managing merge requests with priority ordering,
- * Merger for executing git merge operations, and ConflictResolver for
- * handling merge conflicts with rebase or escalation strategies.
+ * Provides the Refinery coordinator that ties together MergeQueue, Merger,
+ * and ConflictResolver for a complete merge pipeline. Also exports individual
+ * components for direct use when needed.
  */
 
+export {
+  Refinery,
+  DEFAULT_REFINERY_CONFIG,
+  type RefineryConfig,
+  type RefineryEvents,
+} from './refinery.js';
 export { MergeQueue } from './queue.js';
 export { Merger } from './merger.js';
 export {
