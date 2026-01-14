@@ -381,6 +381,15 @@ export function RunApp({
   // Tracks subagents even when panel is hidden (subagentTree state continues updating)
   const [subagentPanelVisible, setSubagentPanelVisible] = useState(initialSubagentPanelVisible);
 
+  // Parallel mode state management
+  // These are used when parallel workers are active (controlled by engine.isParallelMode)
+  // For now, parallel mode is always false until the parallel workers infrastructure is built
+  const isParallelMode = false; // TODO: Get from engine when parallel mode is implemented
+  const [showWorkerList, setShowWorkerList] = useState(true); // Toggle worker list / detail view
+  const [showRefinery, setShowRefinery] = useState(false); // Toggle refinery panel visibility
+  const [selectedWorker, setSelectedWorker] = useState<string | null>(null); // Selected worker by number
+  const [_workersPaused, setWorkersPaused] = useState(false); // Track pause state for all workers
+
   // Active agent state from engine - tracks which agent is running and why (primary/fallback)
   const [activeAgentState, setActiveAgentState] = useState<ActiveAgentState | null>(null);
   // Rate limit state from engine - tracks primary agent rate limiting
@@ -756,19 +765,27 @@ export function RunApp({
 
         case 'p':
           // Toggle pause/resume
-          // When running/executing/selecting, pause will transition to pausing, then to paused
-          // When pausing, pressing p again will cancel the pause request
-          // When paused, resume will transition back to selecting
-          if (status === 'running' || status === 'executing' || status === 'selecting') {
-            engine.pause();
-            setStatus('pausing');
-          } else if (status === 'pausing') {
-            // Cancel pause request
-            engine.resume();
-            setStatus('selecting');
-          } else if (status === 'paused') {
-            engine.resume();
-            // Status will update via engine event
+          // In parallel mode: pause/resume all workers
+          // In single mode: pause/resume the engine
+          if (isParallelMode) {
+            // TODO: Call engine.pauseAllWorkers() / engine.resumeAllWorkers() when implemented
+            setWorkersPaused((prev) => !prev);
+          } else {
+            // Single mode behavior
+            // When running/executing/selecting, pause will transition to pausing, then to paused
+            // When pausing, pressing p again will cancel the pause request
+            // When paused, resume will transition back to selecting
+            if (status === 'running' || status === 'executing' || status === 'selecting') {
+              engine.pause();
+              setStatus('pausing');
+            } else if (status === 'pausing') {
+              // Cancel pause request
+              engine.resume();
+              setStatus('selecting');
+            } else if (status === 'paused') {
+              engine.resume();
+              // Status will update via engine event
+            }
           }
           break;
 
@@ -817,34 +834,47 @@ export function RunApp({
         case '+':
         case '=':
         case '-':
-        case '_':
-          // Add/remove 10 iterations: +/= add, -/_ remove
+        case '_': {
+          // In parallel mode: +/- spawn/reduce workers
+          // In single mode: +/- add/remove 10 iterations
           const isPlus = key.name === '+' || key.name === '=';
           const isMinus = key.name === '-' || key.name === '_';
-          if ((isPlus || isMinus) &&
-              (status === 'ready' || status === 'running' || status === 'executing' || status === 'paused' || status === 'stopped' || status === 'idle' || status === 'complete')) {
+
+          if (isParallelMode) {
+            // Parallel mode: spawn/reduce workers
             if (isPlus) {
-              engine.addIterations(10).then((shouldContinue) => {
-                if (shouldContinue || status === 'complete') {
-                  setStatus('running');
-                  engine.continueExecution();
-                }
-              }).catch((err) => {
-                console.error('Failed to add iterations:', err);
-              });
-            } else {
-              engine.removeIterations(10)
-                .then((success) => {
-                  if (!success) {
-                    console.log('Cannot reduce below current iteration or minimum of 1');
+              // TODO: Call engine.spawnWorker() when WorkerPool is implemented
+            } else if (isMinus) {
+              // TODO: Call engine.reduceMaxWorkers() when WorkerPool is implemented
+            }
+          } else {
+            // Single mode: add/remove 10 iterations
+            if ((isPlus || isMinus) &&
+                (status === 'ready' || status === 'running' || status === 'executing' || status === 'paused' || status === 'stopped' || status === 'idle' || status === 'complete')) {
+              if (isPlus) {
+                engine.addIterations(10).then((shouldContinue) => {
+                  if (shouldContinue || status === 'complete') {
+                    setStatus('running');
+                    engine.continueExecution();
                   }
-                })
-                .catch((err) => {
-                  console.error('Failed to remove iterations:', err);
+                }).catch((err) => {
+                  console.error('Failed to add iterations:', err);
                 });
+              } else {
+                engine.removeIterations(10)
+                  .then((success) => {
+                    if (!success) {
+                      console.log('Cannot reduce below current iteration or minimum of 1');
+                    }
+                  })
+                  .catch((err) => {
+                    console.error('Failed to remove iterations:', err);
+                  });
+              }
             }
           }
           break;
+        }
 
         case ',':
           // Open settings view (comma key, like many text editors)
@@ -921,9 +951,46 @@ export function RunApp({
             }
           }
           break;
+
+        // Parallel mode shortcuts - only active when isParallelMode is true
+        case 'w':
+          // Toggle worker list / detail view (parallel mode only)
+          if (isParallelMode) {
+            setShowWorkerList((prev) => !prev);
+          }
+          break;
+
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+          // Select worker by number (parallel mode only)
+          if (isParallelMode) {
+            // TODO: Map number to actual worker ID when WorkerPool is implemented
+            setSelectedWorker(`worker-${key.name}`);
+          }
+          break;
+
+        case 'm':
+          // Force merge next in queue (parallel mode only)
+          if (isParallelMode) {
+            // TODO: Call engine.forceMerge() when Refinery is implemented
+          }
+          break;
+      }
+
+      // Handle 'r' for refinery toggle separately since it conflicts with 'r' for refresh
+      // In parallel mode, Shift+R toggles refinery panel (lowercase 'r' still refreshes)
+      if (key.sequence === 'R' && isParallelMode) {
+        setShowRefinery((prev) => !prev);
       }
     },
-    [displayedTasks, selectedIndex, status, engine, onQuit, viewMode, iterations, iterationSelectedIndex, iterationHistoryLength, onIterationDrillDown, showInterruptDialog, onInterruptConfirm, onInterruptCancel, showHelp, showSettings, showQuitDialog, showEpicLoader, onStart, storedConfig, onSaveSettings, onLoadEpics, subagentDetailLevel, onSubagentPanelVisibilityChange]
+    [displayedTasks, selectedIndex, status, engine, onQuit, viewMode, iterations, iterationSelectedIndex, iterationHistoryLength, onIterationDrillDown, showInterruptDialog, onInterruptConfirm, onInterruptCancel, showHelp, showSettings, showQuitDialog, showEpicLoader, onStart, storedConfig, onSaveSettings, onLoadEpics, subagentDetailLevel, onSubagentPanelVisibilityChange, isParallelMode, showWorkerList, showRefinery, selectedWorker]
   );
 
   useKeyboard(handleKeyboard);
@@ -1255,7 +1322,7 @@ export function RunApp({
       />
 
       {/* Help Overlay */}
-      <HelpOverlay visible={showHelp} />
+      <HelpOverlay visible={showHelp} isParallelMode={isParallelMode} />
 
       {/* Settings View */}
       {storedConfig && onSaveSettings && (

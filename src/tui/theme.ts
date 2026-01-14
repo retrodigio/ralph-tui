@@ -101,6 +101,22 @@ export const keyboardShortcuts = [
 ] as const;
 
 /**
+ * Parallel mode keyboard shortcuts for footer (shown when parallel mode is active)
+ */
+export const parallelModeKeyboardShortcuts = [
+  { key: 'q', description: 'Quit' },
+  { key: 'w', description: 'Workers' },
+  { key: 'R', description: 'Refinery' },
+  { key: '1-9', description: 'Select Worker' },
+  { key: '+', description: '+Worker' },
+  { key: '-', description: '-Worker' },
+  { key: 'm', description: 'Merge' },
+  { key: 'p', description: 'Pause All' },
+  { key: '↑↓', description: 'Navigate' },
+  { key: '?', description: 'Help' },
+] as const;
+
+/**
  * Full keyboard shortcuts for help overlay
  */
 export const fullKeyboardShortcuts = [
@@ -118,6 +134,32 @@ export const fullKeyboardShortcuts = [
   { key: 'h', description: 'Toggle show/hide closed tasks', category: 'Views' },
   { key: 'v', description: 'Toggle iterations / tasks view', category: 'Views' },
   { key: 'o', description: 'Toggle details / output view', category: 'Views' },
+  { key: 't', description: 'Cycle subagent detail level', category: 'Views' },
+  { key: 'T', description: 'Toggle subagent tree panel', category: 'Views' },
+  { key: '↑ / k', description: 'Move selection up', category: 'Navigation' },
+  { key: '↓ / j', description: 'Move selection down', category: 'Navigation' },
+  { key: 'Enter', description: 'View selected item details', category: 'Navigation' },
+  { key: 'Ctrl+C', description: 'Interrupt (with confirmation)', category: 'System' },
+  { key: 'Ctrl+C ×2', description: 'Force quit immediately', category: 'System' },
+] as const;
+
+/**
+ * Full keyboard shortcuts for parallel mode (help overlay)
+ */
+export const parallelModeFullKeyboardShortcuts = [
+  { key: '?', description: 'Show/hide this help', category: 'General' },
+  { key: 'q', description: 'Quit Ralph', category: 'General' },
+  { key: 'Esc', description: 'Go back / Cancel', category: 'General' },
+  { key: ',', description: 'Open settings', category: 'General' },
+  { key: 'w', description: 'Toggle worker list / detail view', category: 'Workers' },
+  { key: 'R', description: 'Toggle refinery panel visibility', category: 'Workers' },
+  { key: '1-9', description: 'Select worker by number', category: 'Workers' },
+  { key: '+', description: 'Spawn additional worker', category: 'Workers' },
+  { key: '-', description: 'Reduce max workers', category: 'Workers' },
+  { key: 'm', description: 'Force merge next in queue', category: 'Workers' },
+  { key: 'p', description: 'Pause / Resume all workers', category: 'Workers' },
+  { key: 'd', description: 'Toggle progress dashboard', category: 'Views' },
+  { key: 'v', description: 'Toggle iterations / tasks view', category: 'Views' },
   { key: 't', description: 'Cycle subagent detail level', category: 'Views' },
   { key: 'T', description: 'Toggle subagent tree panel', category: 'Views' },
   { key: '↑ / k', description: 'Move selection up', category: 'Navigation' },

@@ -1,10 +1,11 @@
 /**
  * ABOUTME: Help overlay component showing keyboard shortcuts.
  * Displays a modal overlay with all available keyboard shortcuts grouped by category.
+ * Supports both single mode and parallel mode with different shortcut sets.
  */
 
 import type { ReactNode } from 'react';
-import { colors, fullKeyboardShortcuts } from '../theme.js';
+import { colors, fullKeyboardShortcuts, parallelModeFullKeyboardShortcuts } from '../theme.js';
 
 /**
  * Props for the HelpOverlay component
@@ -12,15 +13,20 @@ import { colors, fullKeyboardShortcuts } from '../theme.js';
 export interface HelpOverlayProps {
   /** Whether the overlay is visible */
   visible: boolean;
+  /** Whether parallel mode is active (shows different shortcuts) */
+  isParallelMode?: boolean;
 }
 
 /**
  * Group shortcuts by category for display
  */
-function groupShortcutsByCategory(): Map<string, Array<{ key: string; description: string }>> {
+function groupShortcutsByCategory(
+  isParallelMode: boolean
+): Map<string, Array<{ key: string; description: string }>> {
   const groups = new Map<string, Array<{ key: string; description: string }>>();
+  const shortcuts = isParallelMode ? parallelModeFullKeyboardShortcuts : fullKeyboardShortcuts;
 
-  for (const shortcut of fullKeyboardShortcuts) {
+  for (const shortcut of shortcuts) {
     const existing = groups.get(shortcut.category) || [];
     existing.push({ key: shortcut.key, description: shortcut.description });
     groups.set(shortcut.category, existing);
@@ -32,16 +38,17 @@ function groupShortcutsByCategory(): Map<string, Array<{ key: string; descriptio
 /**
  * Help overlay component
  */
-export function HelpOverlay({ visible }: HelpOverlayProps): ReactNode {
+export function HelpOverlay({ visible, isParallelMode = false }: HelpOverlayProps): ReactNode {
   if (!visible) {
     return null;
   }
 
-  const groups = groupShortcutsByCategory();
+  const groups = groupShortcutsByCategory(isParallelMode);
+  const shortcuts = isParallelMode ? parallelModeFullKeyboardShortcuts : fullKeyboardShortcuts;
 
   // Calculate max key width for alignment
   let maxKeyWidth = 0;
-  for (const shortcut of fullKeyboardShortcuts) {
+  for (const shortcut of shortcuts) {
     if (shortcut.key.length > maxKeyWidth) {
       maxKeyWidth = shortcut.key.length;
     }
