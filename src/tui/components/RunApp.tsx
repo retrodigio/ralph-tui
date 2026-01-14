@@ -12,6 +12,7 @@ import type { RalphStatus, TaskStatus } from '../theme.js';
 import type { TaskItem, BlockerInfo, DetailsViewMode, IterationTimingInfo, SubagentTreeNode } from '../types.js';
 import { Header } from './Header.js';
 import { Footer } from './Footer.js';
+import { ParallelModeFooter } from './ParallelModeFooter.js';
 import { LeftPanel } from './LeftPanel.js';
 import { RightPanel } from './RightPanel.js';
 import { IterationHistoryView } from './IterationHistoryView.js';
@@ -1316,7 +1317,7 @@ export function RunApp({
       </box>
 
       {/* Footer */}
-      <Footer />
+      {isParallelMode ? <ParallelModeFooter /> : <Footer />}
 
       {/* Interrupt Confirmation Dialog */}
       <ConfirmationDialog
