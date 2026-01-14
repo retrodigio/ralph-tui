@@ -56,6 +56,68 @@ export const NotificationsConfigSchema = z.object({
 });
 
 /**
+ * Pool mode schema
+ */
+export const PoolModeSchema = z.enum(['single', 'parallel']);
+
+/**
+ * Pool scheduling configuration schema
+ */
+export const PoolSchedulingConfigSchema = z.object({
+  /** Only run tasks with merged dependencies (default: true) */
+  strictDependencies: z.boolean().optional(),
+  /** Use bv --robot-plan for track detection (default: true) */
+  useParallelTracks: z.boolean().optional(),
+});
+
+/**
+ * Pool configuration schema for parallel mode
+ */
+export const PoolConfigSchema = z.object({
+  /** Pool execution mode - single or parallel (default: 'single') */
+  mode: PoolModeSchema.optional(),
+  /** Maximum number of parallel workers (default: 3) */
+  maxWorkers: z.number().int().min(1).max(10).optional(),
+  /** Directory for git worktrees (default: '.ralph-workers') */
+  worktreeDir: z.string().optional(),
+  /** Scheduling configuration */
+  scheduling: PoolSchedulingConfigSchema.optional(),
+});
+
+/**
+ * Refinery conflict handling strategy schema
+ */
+export const RefineryConflictStrategySchema = z.enum(['rebase', 'escalate']);
+
+/**
+ * Refinery configuration schema for merge operations
+ */
+export const RefineryConfigSchema = z.object({
+  /** Target branch for merges (default: 'main') */
+  targetBranch: z.string().optional(),
+  /** Whether to run tests before merging (default: true) */
+  runTests: z.boolean().optional(),
+  /** Command to run for testing */
+  testCommand: z.string().optional(),
+  /** Strategy for handling merge conflicts (default: 'rebase') */
+  onConflict: RefineryConflictStrategySchema.optional(),
+  /** Whether to delete worker branches after successful merge (default: true) */
+  deleteAfterMerge: z.boolean().optional(),
+  /** Number of times to retry flaky tests (default: 2) */
+  retryFlakyTests: z.number().int().min(0).max(5).optional(),
+});
+
+/**
+ * Agents section configuration schema (distinct from plugin configs)
+ */
+export const AgentsSectionConfigSchema = z.object({
+  /** Primary agent to use */
+  primary: z.string().optional(),
+  /** Fallback chain for rate limits */
+  fallback: z.array(z.string()).optional(),
+});
+
+/**
  * Agent plugin configuration schema
  */
 export const AgentPluginConfigSchema = z.object({
@@ -131,6 +193,15 @@ export const StoredConfigSchema = z
 
     // Notifications configuration
     notifications: NotificationsConfigSchema.optional(),
+
+    // Pool configuration for parallel mode
+    pool: PoolConfigSchema.optional(),
+
+    // Refinery configuration for merge operations
+    refinery: RefineryConfigSchema.optional(),
+
+    // Agents section (primary/fallback configuration)
+    agentsSection: AgentsSectionConfigSchema.optional(),
   })
   .strict();
 
