@@ -24,6 +24,7 @@ import { SettingsView } from './SettingsView.js';
 import { EpicLoaderOverlay } from './EpicLoaderOverlay.js';
 import type { EpicLoaderMode } from './EpicLoaderOverlay.js';
 import { SubagentTreePanel } from './SubagentTreePanel.js';
+import { WorkerListPanel } from './WorkerListPanel.js';
 import type {
   ExecutionEngine,
   EngineEvent,
@@ -394,7 +395,7 @@ export function RunApp({
   const [_workersPaused, setWorkersPaused] = useState(false); // Track pause state for all workers
 
   // Mock parallel mode data (until WorkerPool is integrated)
-  const [_workers] = useState<Map<string, WorkerState>>(() => {
+  const [workers] = useState<Map<string, WorkerState>>(() => {
     const mockWorkers = new Map<string, WorkerState>();
     mockWorkers.set('nebula', {
       status: 'working',
@@ -1342,7 +1343,16 @@ export function RunApp({
           />
         ) : viewMode === 'tasks' ? (
           <>
-            <LeftPanel tasks={displayedTasks} selectedIndex={selectedIndex} />
+            {/* Left panel: show WorkerListPanel in parallel mode when showWorkerList is true, otherwise LeftPanel */}
+            {isParallelMode && showWorkerList ? (
+              <WorkerListPanel
+                workers={workers}
+                selectedWorker={selectedWorker}
+                onSelectWorker={setSelectedWorker}
+              />
+            ) : (
+              <LeftPanel tasks={displayedTasks} selectedIndex={selectedIndex} />
+            )}
             <RightPanel
               selectedTask={selectedTask}
               currentIteration={selectedTaskIteration.iteration}
