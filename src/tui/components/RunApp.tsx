@@ -839,12 +839,14 @@ export function RunApp({
           break;
 
         case 'r':
-          // In parallel mode: toggle refinery panel
-          // In single mode: refresh task list from tracker
+          // Refresh task list from tracker (both modes)
+          engine.refreshTasks();
+          break;
+
+        case 'R':
+          // Toggle refinery panel (parallel mode only)
           if (isParallelMode) {
             setShowRefinery((prev) => !prev);
-          } else {
-            engine.refreshTasks();
           }
           break;
 
