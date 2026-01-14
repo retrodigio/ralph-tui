@@ -4,6 +4,11 @@
  */
 
 export { Worker } from './worker.js';
+export {
+  RateLimitCoordinator,
+  type AgentRateLimitState,
+  type RateLimitCoordinatorEvents,
+} from './rate-limit-coordinator.js';
 export type {
   WorkerConfig,
   WorkerStatus,
