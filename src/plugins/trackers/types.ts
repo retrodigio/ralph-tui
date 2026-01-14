@@ -336,6 +336,15 @@ export interface TrackerPlugin {
   getEpicId?(): string;
 
   /**
+   * Get tasks sorted in execution order (topological sort by dependencies).
+   * Tasks with no dependencies come first, followed by tasks whose dependencies
+   * are satisfied, maintaining a valid execution sequence.
+   * @param filter Optional filter to narrow results before sorting
+   * @returns Array of tasks sorted in execution order
+   */
+  getTasksInExecutionOrder(filter?: TaskFilter): Promise<TrackerTask[]>;
+
+  /**
    * Get setup questions for configuring this plugin.
    * Used by the setup wizard to collect configuration.
    * @returns Array of questions to ask during setup

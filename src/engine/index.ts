@@ -260,8 +260,8 @@ export class ExecutionEngine {
       return;
     }
 
-    // Fetch all tasks including completed for TUI display
-    const tasks = await this.tracker.getTasks({
+    // Fetch all tasks including completed for TUI display, sorted by execution order
+    const tasks = await this.tracker.getTasksInExecutionOrder({
       status: ['open', 'in_progress', 'completed'],
     });
 
@@ -294,9 +294,9 @@ export class ExecutionEngine {
     this.state.startedAt = new Date().toISOString();
     this.shouldStop = false;
 
-    // Fetch all tasks including completed for TUI display
+    // Fetch all tasks including completed for TUI display, sorted by execution order
     // Open/in_progress tasks are actionable; completed tasks are for historical view
-    const initialTasks = await this.tracker.getTasks({
+    const initialTasks = await this.tracker.getTasksInExecutionOrder({
       status: ['open', 'in_progress', 'completed'],
     });
 

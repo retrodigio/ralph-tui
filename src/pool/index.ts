@@ -9,6 +9,11 @@ export {
   type AgentRateLimitState,
   type RateLimitCoordinatorEvents,
 } from './rate-limit-coordinator.js';
+export {
+  Scheduler,
+  type SchedulerConfig,
+  type TaskAssignment,
+} from './scheduler.js';
 export type {
   WorkerConfig,
   WorkerStatus,

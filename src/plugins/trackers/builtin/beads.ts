@@ -563,6 +563,34 @@ export class BeadsTrackerPlugin extends BaseTrackerPlugin {
   }
 
   /**
+   * Get tasks sorted in execution order (topological sort by dependencies).
+   * Overrides base implementation to fetch full dependency data via `bd show`
+   * since `bd list --json` doesn't include dependency arrays.
+   */
+  override async getTasksInExecutionOrder(
+    filter?: TaskFilter
+  ): Promise<TrackerTask[]> {
+    // Get basic task list
+    const tasks = await this.getTasks(filter);
+
+    if (tasks.length === 0) {
+      return [];
+    }
+
+    // Fetch full dependency data for each task using bd show
+    // This is more expensive but gives us accurate dependency info
+    const enrichedTasks: TrackerTask[] = await Promise.all(
+      tasks.map(async (task) => {
+        const fullTask = await this.getTask(task.id);
+        return fullTask ?? task;
+      })
+    );
+
+    // Use base class topological sort
+    return this.topologicalSort(enrichedTasks);
+  }
+
+  /**
    * Get the next task to work on.
    * Uses `bd ready` to get tasks with no blockers, since `bd list --json`
    * doesn't include dependency data needed for readiness checks.

@@ -397,6 +397,7 @@ export function RunApp({
 
   // Filter and sort tasks for display
   // Sort order: active → actionable → blocked → done → closed
+  // Within each status group, preserve execution order (topological sort by dependencies)
   // This is computed early so keyboard handlers can use displayedTasks.length
   const displayedTasks = useMemo(() => {
     // Status priority for sorting (lower = higher priority)
@@ -410,11 +411,22 @@ export function RunApp({
       closed: 6,
     };
 
+    // Build index map to preserve original (execution) order as secondary sort
+    const indexMap = new Map<string, number>();
+    tasks.forEach((t, i) => indexMap.set(t.id, i));
+
     const filtered = showClosedTasks ? tasks : tasks.filter((t) => t.status !== 'closed');
     return [...filtered].sort((a, b) => {
       const priorityA = statusPriority[a.status] ?? 10;
       const priorityB = statusPriority[b.status] ?? 10;
-      return priorityA - priorityB;
+      // Primary sort: by status
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      // Secondary sort: preserve execution order (original array position)
+      const indexA = indexMap.get(a.id) ?? 0;
+      const indexB = indexMap.get(b.id) ?? 0;
+      return indexA - indexB;
     });
   }, [tasks, showClosedTasks]);
 

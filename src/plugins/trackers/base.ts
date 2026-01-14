@@ -159,6 +159,106 @@ export abstract class BaseTrackerPlugin implements TrackerPlugin {
   }
 
   /**
+   * Get tasks sorted in execution order (topological sort by dependencies).
+   * Uses Kahn's algorithm to produce a valid execution sequence.
+   * Tasks with no dependencies come first, followed by tasks whose
+   * dependencies have been "scheduled" earlier in the list.
+   * Subclasses can override for more efficient implementation.
+   */
+  async getTasksInExecutionOrder(filter?: TaskFilter): Promise<TrackerTask[]> {
+    const tasks = await this.getTasks(filter);
+    return this.topologicalSort(tasks);
+  }
+
+  /**
+   * Topological sort using Kahn's algorithm.
+   * Returns tasks ordered so that dependencies come before dependents.
+   * Tasks with no dependency data are sorted by priority as fallback.
+   */
+  protected topologicalSort(tasks: TrackerTask[]): TrackerTask[] {
+    // Build task lookup map
+    const taskMap = new Map<string, TrackerTask>();
+    for (const task of tasks) {
+      taskMap.set(task.id, task);
+    }
+
+    // Build in-degree map (count of unresolved dependencies within our task set)
+    const inDegree = new Map<string, number>();
+    const dependents = new Map<string, string[]>(); // task -> tasks that depend on it
+
+    for (const task of tasks) {
+      inDegree.set(task.id, 0);
+      dependents.set(task.id, []);
+    }
+
+    // Calculate in-degrees based on dependencies within our task set
+    for (const task of tasks) {
+      if (task.dependsOn && task.dependsOn.length > 0) {
+        let count = 0;
+        for (const depId of task.dependsOn) {
+          // Only count dependencies that are in our task set
+          if (taskMap.has(depId)) {
+            count++;
+            dependents.get(depId)!.push(task.id);
+          }
+        }
+        inDegree.set(task.id, count);
+      }
+    }
+
+    // Kahn's algorithm: start with tasks that have no dependencies
+    const queue: TrackerTask[] = [];
+    const result: TrackerTask[] = [];
+
+    // Collect all tasks with in-degree 0
+    for (const task of tasks) {
+      if (inDegree.get(task.id) === 0) {
+        queue.push(task);
+      }
+    }
+
+    // Sort initial queue by priority (lower number = higher priority)
+    queue.sort((a, b) => a.priority - b.priority);
+
+    while (queue.length > 0) {
+      // Take the highest priority task from the queue
+      const task = queue.shift()!;
+      result.push(task);
+
+      // Reduce in-degree of all tasks that depend on this one
+      const deps = dependents.get(task.id) || [];
+      for (const depId of deps) {
+        const newDegree = (inDegree.get(depId) ?? 1) - 1;
+        inDegree.set(depId, newDegree);
+
+        if (newDegree === 0) {
+          const depTask = taskMap.get(depId);
+          if (depTask) {
+            // Insert in priority order
+            const insertIdx = queue.findIndex((t) => t.priority > depTask.priority);
+            if (insertIdx === -1) {
+              queue.push(depTask);
+            } else {
+              queue.splice(insertIdx, 0, depTask);
+            }
+          }
+        }
+      }
+    }
+
+    // If there are remaining tasks (cycle or missing deps), append them sorted by priority
+    if (result.length < tasks.length) {
+      const resultIds = new Set(result.map((t) => t.id));
+      const remaining = tasks
+        .filter((t) => !resultIds.has(t.id))
+        .sort((a, b) => a.priority - b.priority);
+      result.push(...remaining);
+    }
+
+    return result;
+  }
+
+  /**
    * Get setup questions for configuring this plugin.
    * Subclasses should override to provide their specific questions.
    */
