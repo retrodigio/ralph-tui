@@ -1,8 +1,18 @@
 /**
  * ABOUTME: Worker pool module for parallel task execution.
- * Exports Worker class and related types for isolated task processing.
+ * Exports WorkerPool orchestrator, Worker class, and related types for
+ * isolated task processing with coordinated worktree management.
  */
 
+export {
+  WorkerPool,
+  type PoolConfig,
+  type PoolState,
+  type PoolStatus,
+  type WorkerPoolEvents,
+  type AgentFactory,
+  DEFAULT_POOL_CONFIG,
+} from './worker-pool.js';
 export { Worker } from './worker.js';
 export {
   RateLimitCoordinator,
