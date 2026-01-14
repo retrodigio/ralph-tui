@@ -1377,14 +1377,30 @@ export function RunApp({
             ) : (
               <LeftPanel tasks={displayedTasks} selectedIndex={selectedIndex} />
             )}
-            {/* Right panel: show WorkerPanel in parallel mode when a worker is selected, otherwise RightPanel */}
+            {/* Right panel: show WorkerPanel/RefineryPanel stack in parallel mode, otherwise RightPanel */}
             {isParallelMode && selectedWorker && workers.get(selectedWorker) ? (
-              <WorkerPanel
-                name={selectedWorker}
-                worker={workers.get(selectedWorker)!}
-                showOutput={showWorkerOutput}
-                showSubagents={showWorkerSubagents}
-              />
+              <box style={{ flexDirection: 'column', flexGrow: 1 }}>
+                {/* WorkerPanel - top half (or full height if refinery hidden) */}
+                <box style={{ flexGrow: 1 }}>
+                  <WorkerPanel
+                    name={selectedWorker}
+                    worker={workers.get(selectedWorker)!}
+                    showOutput={showWorkerOutput}
+                    showSubagents={showWorkerSubagents}
+                  />
+                </box>
+                {/* RefineryPanel - bottom half (when toggled with 'e' key) */}
+                {showRefinery && (
+                  <box style={{ flexGrow: 1 }}>
+                    <RefineryPanel
+                      queue={_mergeQueue}
+                      currentMerge={_currentMerge}
+                      stats={_refineryStats}
+                      testsStatus="passing"
+                    />
+                  </box>
+                )}
+              </box>
             ) : (
               <RightPanel
                 selectedTask={selectedTask}
@@ -1405,15 +1421,6 @@ export function RunApp({
                 tree={subagentTree}
                 activeSubagentId={focusedSubagentId}
                 width={45}
-              />
-            )}
-            {/* Refinery Panel - shown when 'R' is pressed in parallel mode */}
-            {isParallelMode && showRefinery && (
-              <RefineryPanel
-                queue={_mergeQueue}
-                currentMerge={_currentMerge}
-                stats={_refineryStats}
-                testsStatus="passing"
               />
             )}
           </>
