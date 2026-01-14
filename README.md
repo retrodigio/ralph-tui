@@ -70,6 +70,7 @@ Ralph selects the highest-priority task, builds a prompt, executes your AI agent
 - **Real-time TUI**: Watch agent output, control execution with keyboard shortcuts
 - **Subagent Tracing**: See nested agent calls in real-time
 - **Cross-iteration Context**: Automatic progress tracking between tasks
+- **Parallel Mode**: Run multiple workers simultaneously with worktree isolation and automatic merging
 
 ## CLI Commands
 
@@ -122,6 +123,89 @@ ralph-tui run --headless
 
 See the [full CLI reference](https://ralph-tui.com/docs/cli/overview) for all options.
 
+## Parallel Mode
+
+Parallel mode runs multiple AI workers simultaneously, each in its own git worktree for isolation. Workers complete tasks independently and the Refinery merges completed work back to your target branch.
+
+### Quick Start
+
+```bash
+# Run with 3 parallel workers (default)
+ralph-tui run --workers=3
+
+# Run with maximum workers
+ralph-tui run --workers=unlimited
+
+# Force single mode (legacy)
+ralph-tui run --single
+```
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Worker Pool                                   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                          │
+│  │ Worker 1 │  │ Worker 2 │  │ Worker 3 │  ← Each in own worktree  │
+│  │ Task A   │  │ Task B   │  │ Task C   │                          │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘                          │
+│       │             │             │                                  │
+│       └─────────────┼─────────────┘                                  │
+│                     ▼                                                │
+│              ┌──────────────┐                                        │
+│              │   Refinery   │  ← Serialized merge queue             │
+│              │  Merge Queue │                                        │
+│              └──────┬───────┘                                        │
+│                     ▼                                                │
+│              ┌──────────────┐                                        │
+│              │    main      │  ← Target branch                      │
+│              └──────────────┘                                        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Worker Pool** spawns workers up to `maxWorkers` limit
+2. Each worker gets its own **git worktree** for isolated execution
+3. **Scheduler** assigns tasks respecting dependencies (blocked tasks wait)
+4. Completed tasks queue in **Refinery** for serialized merging
+5. **Conflict resolution**: auto-rebase or escalate to user
+
+### Parallel Mode TUI Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `w` | Toggle worker list / detail view |
+| `r` | Toggle refinery panel visibility |
+| `1-9` | Select worker by number |
+| `+` | Spawn additional worker |
+| `-` | Reduce max workers |
+| `m` | Force merge next in queue |
+| `p` | Pause/resume all workers |
+
+### Configuration
+
+Add to `.ralph-tui/config.toml`:
+
+```toml
+[pool]
+mode = "parallel"      # 'single' or 'parallel'
+maxWorkers = 3         # 1-10 workers
+worktreeDir = ".ralph-workers"
+
+[pool.scheduling]
+strictDependencies = true   # Only run tasks with merged deps
+useParallelTracks = true    # Use bv for track detection
+
+[refinery]
+targetBranch = "main"
+runTests = true
+testCommand = "npm test"
+onConflict = "rebase"       # 'rebase' or 'escalate'
+deleteAfterMerge = true
+retryFlakyTests = 2
+```
+
+See [docs/parallel-mode.md](docs/parallel-mode.md) for the full guide.
+
 ## Contributing
 
 ### Development Setup
@@ -157,6 +241,9 @@ ralph-tui/
 │   │   ├── agents/       # Agent plugins (claude, opencode)
 │   │   │   └── tracing/  # Subagent tracing parser
 │   │   └── trackers/     # Tracker plugins (beads, beads-bv, json)
+│   ├── pool/             # Worker pool for parallel execution
+│   ├── refinery/         # Merge queue and conflict resolution
+│   ├── worktree/         # Git worktree management
 │   ├── session/          # Session persistence and lock management
 │   ├── setup/            # Interactive setup wizard
 │   ├── templates/        # Handlebars prompt templates
