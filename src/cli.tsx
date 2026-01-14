@@ -18,6 +18,7 @@ import {
   executeCreatePrdCommand,
   executeConvertCommand,
   executeDocsCommand,
+  executeRefineryCommand,
 } from './commands/index.js';
 
 /**
@@ -43,6 +44,7 @@ Commands:
   template init       Copy default template for customization
   plugins agents      List available agent plugins
   plugins trackers    List available tracker plugins
+  refinery <cmd>      Manage the refinery queue (status, list, merge-next)
   docs [section]      Open documentation in browser
   help, --help, -h    Show this help message
 
@@ -53,12 +55,19 @@ Run Options:
   --model <name>      Override model (e.g., opus, sonnet)
   --tracker <name>    Override tracker plugin (e.g., beads, beads-bv, json)
   --iterations <n>    Maximum iterations (0 = unlimited)
+  --workers <n>       Number of parallel workers (1-10 or 'unlimited')
+  --single            Run in legacy single mode
   --resume            Resume existing session (deprecated, use 'resume' command)
   --headless          Run without TUI (alias: --no-tui)
   --no-tui            Run without TUI, output structured logs to stdout
   --no-setup          Skip interactive setup even if no config exists
   --notify            Force enable desktop notifications
   --no-notify         Force disable desktop notifications
+
+Refinery Options:
+  status              Show refinery queue status
+  list                List items in refinery queue
+  merge-next          Manually trigger merge of next item
 
 Resume Options:
   --cwd <path>        Working directory
@@ -175,6 +184,12 @@ async function handleSubcommand(args: string[]): Promise<boolean> {
   // Docs command
   if (command === 'docs') {
     await executeDocsCommand(args.slice(1));
+    return true;
+  }
+
+  // Refinery command
+  if (command === 'refinery') {
+    await executeRefineryCommand(args.slice(1));
     return true;
   }
 

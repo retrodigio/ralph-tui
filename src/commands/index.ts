@@ -68,3 +68,8 @@ export {
   parseDocsArgs,
   printDocsHelp,
 } from './docs.js';
+
+export {
+  executeRefineryCommand,
+  printRefineryHelp,
+} from './refinery.js';

@@ -33,6 +33,42 @@ export type RalphStatus =
 export type StatusExitCode = 0 | 1 | 2;
 
 /**
+ * Worker status for parallel mode
+ */
+export interface WorkerStatus {
+  /** Worker ID */
+  id: string;
+  /** Current status */
+  status: 'idle' | 'working' | 'rate_limited';
+  /** Task being worked on (if working) */
+  taskId?: string;
+  /** Progress percentage (if working) */
+  progress?: number;
+}
+
+/**
+ * Pool status for parallel mode
+ */
+export interface PoolStatus {
+  /** Whether pool is running */
+  running: boolean;
+  /** Execution mode */
+  mode: 'single' | 'parallel';
+  /** Number of active workers */
+  workerCount: number;
+  /** Maximum workers configured */
+  maxWorkers: number;
+  /** Individual worker statuses */
+  workers: WorkerStatus[];
+  /** Refinery queue count */
+  refineryQueued: number;
+  /** Refinery merging count */
+  refineryMerging: number;
+  /** Whether all agents are available (not rate limited) */
+  allAgentsAvailable: boolean;
+}
+
+/**
  * JSON output structure for --json flag
  */
 export interface StatusJsonOutput {
@@ -104,6 +140,9 @@ export interface StatusJsonOutput {
     /** Hostname of lock holder */
     hostname?: string;
   };
+
+  /** Pool status (parallel mode) */
+  pool?: PoolStatus;
 }
 
 /**
@@ -250,7 +289,86 @@ function buildJsonOutput(
     };
   }
 
+  // Add pool status (placeholder - will be populated when pool manager is implemented)
+  // Pool info is only available when Ralph is actively running in parallel mode
+  if (lockCheck.isLocked && !lockCheck.isStale) {
+    // Placeholder pool status - actual implementation will read from shared state
+    output.pool = getPlaceholderPoolStatus();
+  }
+
   return output;
+}
+
+/**
+ * Get placeholder pool status (no active pool)
+ * This will be replaced with actual pool state reading when pool manager is implemented
+ */
+function getPlaceholderPoolStatus(): PoolStatus {
+  return {
+    running: false,
+    mode: 'single',
+    workerCount: 0,
+    maxWorkers: 1,
+    workers: [],
+    refineryQueued: 0,
+    refineryMerging: 0,
+    allAgentsAvailable: true,
+  };
+}
+
+/**
+ * Format worker status for display
+ */
+function formatWorkerStatus(worker: WorkerStatus): string {
+  switch (worker.status) {
+    case 'idle':
+      return 'idle';
+    case 'working':
+      return `working on ${worker.taskId} (${worker.progress ?? 0}%)`;
+    case 'rate_limited':
+      return 'rate limited';
+  }
+}
+
+/**
+ * Print pool status section
+ */
+function printPoolStatus(poolStatus: PoolStatus): void {
+  console.log('  Pool:');
+  console.log(`    Mode:          ${poolStatus.mode}`);
+
+  if (poolStatus.mode === 'parallel' && poolStatus.running) {
+    console.log(`    Workers:       ${poolStatus.workerCount}/${poolStatus.maxWorkers}`);
+    console.log('');
+
+    // Individual worker status
+    if (poolStatus.workers.length > 0) {
+      console.log('  Workers:');
+      for (const worker of poolStatus.workers) {
+        console.log(`    ${worker.id}: ${formatWorkerStatus(worker)}`);
+      }
+      console.log('');
+    }
+
+    // Refinery status
+    console.log('  Refinery:');
+    console.log(`    Queued:        ${poolStatus.refineryQueued}`);
+    console.log(`    Merging:       ${poolStatus.refineryMerging}`);
+    console.log('');
+
+    // Rate limits
+    const rateLimitStatus = poolStatus.allAgentsAvailable
+      ? '✓ all agents available'
+      : '⚠ some agents rate limited';
+    console.log(`  Rate limits:     ${rateLimitStatus}`);
+    console.log('');
+  } else if (poolStatus.mode === 'single') {
+    console.log('    (single mode - use --workers for parallel)');
+    console.log('');
+  } else {
+    console.log('    (pool not running)');
+    console.log('');
+  }
 }
 
 /**
@@ -325,6 +443,10 @@ function printHumanStatus(
     console.log(`    PID:           ${lockCheck.lock.pid}`);
     console.log(`    Host:          ${lockCheck.lock.hostname}`);
     console.log('');
+
+    // Pool status (only shown when actively running)
+    const poolStatus = getPlaceholderPoolStatus();
+    printPoolStatus(poolStatus);
   } else if (lockCheck.lock && lockCheck.isStale) {
     console.log('  ⚠️  Stale lock detected (PID ${lockCheck.lock.pid} not running)');
     console.log('');
@@ -496,6 +618,7 @@ Description:
   - Active tracker and agent
   - Configuration (epic/prd)
   - Whether the session can be resumed
+  - Pool status in parallel mode (workers, refinery queue, rate limits)
 
   When using --json, the output is a JSON object with structured data
   suitable for CI pipelines and scripts.

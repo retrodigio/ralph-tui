@@ -56,10 +56,14 @@ import { sendCompletionNotification, sendMaxIterationsNotification, sendErrorNot
 import type { NotificationSoundMode } from '../config/types.js';
 
 /**
- * Extended runtime options with noSetup flag
+ * Extended runtime options with noSetup flag and parallel mode options
  */
 interface ExtendedRuntimeOptions extends RuntimeOptions {
   noSetup?: boolean;
+  /** Number of parallel workers (default from config, 'unlimited' for max) */
+  workers?: number | 'unlimited';
+  /** Force single mode (overrides config) */
+  single?: boolean;
 }
 
 /**
@@ -181,6 +185,24 @@ export function parseRunArgs(args: string[]): ExtendedRuntimeOptions {
       case '--no-notify':
         options.notify = false;
         break;
+
+      case '--workers':
+        if (nextArg && !nextArg.startsWith('-')) {
+          if (nextArg === 'unlimited') {
+            options.workers = 'unlimited';
+          } else {
+            const parsed = parseInt(nextArg, 10);
+            if (!isNaN(parsed) && parsed >= 1) {
+              options.workers = parsed;
+            }
+          }
+          i++;
+        }
+        break;
+
+      case '--single':
+        options.single = true;
+        break;
     }
   }
 
@@ -215,6 +237,8 @@ Options:
   --no-setup          Skip interactive setup even if no config exists
   --notify            Force enable desktop notifications
   --no-notify         Force disable desktop notifications
+  --workers <n>       Number of parallel workers (1-10 or 'unlimited', default from config)
+  --single            Run in single mode (overrides parallel config)
 
 Log Output Format (--no-tui mode):
   [timestamp] [level] [component] message
@@ -237,6 +261,9 @@ Examples:
   ralph-tui run --iterations 20              # Limit to 20 iterations
   ralph-tui run --resume                     # Resume previous session
   ralph-tui run --no-tui                     # Run headless for CI/scripts
+  ralph-tui run --workers=5                  # Run in parallel mode with 5 workers
+  ralph-tui run --workers=unlimited          # Run with max workers (from config)
+  ralph-tui run --single                     # Force single mode (legacy)
 `);
 }
 
