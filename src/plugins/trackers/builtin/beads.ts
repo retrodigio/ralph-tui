@@ -561,6 +561,76 @@ export class BeadsTrackerPlugin extends BaseTrackerPlugin {
   getEpicId(): string {
     return this.epicId;
   }
+
+  /**
+   * Get the next task to work on.
+   * Uses `bd ready` to get tasks with no blockers, since `bd list --json`
+   * doesn't include dependency data needed for readiness checks.
+   * Overrides base implementation to properly handle beads dependencies.
+   */
+  override async getNextTask(filter?: TaskFilter): Promise<TrackerTask | undefined> {
+    // Build bd ready command args
+    const args = ['ready', '--json'];
+
+    // Filter by parent (epic) if specified
+    if (filter?.parentId) {
+      args.push('--parent', filter.parentId);
+    } else if (this.epicId) {
+      args.push('--parent', this.epicId);
+    }
+
+    // Filter by labels
+    const labelsToFilter =
+      filter?.labels && filter.labels.length > 0 ? filter.labels : this.labels;
+    if (labelsToFilter.length > 0) {
+      args.push('--label', labelsToFilter.join(','));
+    }
+
+    const { stdout, exitCode, stderr } = await execBd(args, this.workingDir);
+
+    if (exitCode !== 0) {
+      console.error('bd ready failed:', stderr);
+      // Fall back to base implementation (may not handle deps correctly)
+      return super.getNextTask(filter);
+    }
+
+    // Parse JSON output
+    let beads: BeadJson[];
+    try {
+      beads = JSON.parse(stdout) as BeadJson[];
+    } catch (err) {
+      console.error('Failed to parse bd ready output:', err);
+      return super.getNextTask(filter);
+    }
+
+    if (beads.length === 0) {
+      return undefined;
+    }
+
+    // Convert to TrackerTask
+    let tasks = beads.map(beadToTask);
+
+    // Exclude specific task IDs (e.g., skipped tasks)
+    if (filter?.excludeIds && filter.excludeIds.length > 0) {
+      const excludeSet = new Set(filter.excludeIds);
+      tasks = tasks.filter((t) => !excludeSet.has(t.id));
+    }
+
+    if (tasks.length === 0) {
+      return undefined;
+    }
+
+    // Sort by priority (0 = highest priority)
+    tasks.sort((a, b) => a.priority - b.priority);
+
+    // Prefer in_progress tasks over open tasks
+    const inProgress = tasks.find((t) => t.status === 'in_progress');
+    if (inProgress) {
+      return inProgress;
+    }
+
+    return tasks[0];
+  }
 }
 
 /**
