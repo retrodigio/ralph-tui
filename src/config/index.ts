@@ -180,6 +180,16 @@ function mergeConfigs(global: StoredConfig, project: StoredConfig): StoredConfig
     merged.notifications = { ...merged.notifications, ...project.notifications };
   }
 
+  // Merge pool configuration
+  if (project.pool !== undefined) {
+    merged.pool = { ...merged.pool, ...project.pool };
+  }
+
+  // Merge refinery configuration
+  if (project.refinery !== undefined) {
+    merged.refinery = { ...merged.refinery, ...project.refinery };
+  }
+
   return merged;
 }
 
