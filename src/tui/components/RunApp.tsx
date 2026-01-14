@@ -839,8 +839,13 @@ export function RunApp({
           break;
 
         case 'r':
-          // Refresh task list from tracker
-          engine.refreshTasks();
+          // In parallel mode: toggle refinery panel
+          // In single mode: refresh task list from tracker
+          if (isParallelMode) {
+            setShowRefinery((prev) => !prev);
+          } else {
+            engine.refreshTasks();
+          }
           break;
 
         case '+':
@@ -996,11 +1001,6 @@ export function RunApp({
           break;
       }
 
-      // Handle 'r' for refinery toggle separately since it conflicts with 'r' for refresh
-      // In parallel mode, Shift+R toggles refinery panel (lowercase 'r' still refreshes)
-      if (key.sequence === 'R' && isParallelMode) {
-        setShowRefinery((prev) => !prev);
-      }
     },
     [displayedTasks, selectedIndex, status, engine, onQuit, viewMode, iterations, iterationSelectedIndex, iterationHistoryLength, onIterationDrillDown, showInterruptDialog, onInterruptConfirm, onInterruptCancel, showHelp, showSettings, showQuitDialog, showEpicLoader, onStart, storedConfig, onSaveSettings, onLoadEpics, subagentDetailLevel, onSubagentPanelVisibilityChange, isParallelMode, showWorkerList, showRefinery, selectedWorker]
   );

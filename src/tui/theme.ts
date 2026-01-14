@@ -106,7 +106,7 @@ export const keyboardShortcuts = [
 export const parallelModeKeyboardShortcuts = [
   { key: 'q', description: 'Quit' },
   { key: 'w', description: 'Workers' },
-  { key: 'R', description: 'Refinery' },
+  { key: 'r', description: 'Refinery' },
   { key: '1-9', description: 'Select Worker' },
   { key: '+', description: '+Worker' },
   { key: '-', description: '-Worker' },
@@ -152,7 +152,7 @@ export const parallelModeFullKeyboardShortcuts = [
   { key: 'Esc', description: 'Go back / Cancel', category: 'General' },
   { key: ',', description: 'Open settings', category: 'General' },
   { key: 'w', description: 'Toggle worker list / detail view', category: 'Workers' },
-  { key: 'R', description: 'Toggle refinery panel visibility', category: 'Workers' },
+  { key: 'r', description: 'Toggle refinery panel visibility', category: 'Workers' },
   { key: '1-9', description: 'Select worker by number', category: 'Workers' },
   { key: '+', description: 'Spawn additional worker', category: 'Workers' },
   { key: '-', description: 'Reduce max workers', category: 'Workers' },
