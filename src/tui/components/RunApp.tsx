@@ -834,12 +834,22 @@ export function RunApp({
           break;
 
         case '-':
+        case '_':
           // Remove 10 iterations from maxIterations (but not below 1 or current iteration)
-          if (status === 'ready' || status === 'running' || status === 'executing' || status === 'paused' || status === 'stopped' || status === 'idle' || status === 'complete') {
-            engine.removeIterations(10).catch((err) => {
-              // Surface iteration removal errors to user
-              console.error('Failed to remove iterations:', err);
-            });
+          // Handle both '-' (key.name) and Shift+- (key.sequence === '-')
+          if ((key.name === '-' || key.sequence === '-') &&
+              (status === 'ready' || status === 'running' || status === 'executing' || status === 'paused' || status === 'stopped' || status === 'idle' || status === 'complete')) {
+            engine.removeIterations(10)
+              .then((success) => {
+                if (!success) {
+                  // Removal was blocked (at min limit)
+                  console.log('Cannot reduce below current iteration or minimum of 1');
+                }
+              })
+              .catch((err) => {
+                // Surface iteration removal errors to user
+                console.error('Failed to remove iterations:', err);
+              });
           }
           break;
 
